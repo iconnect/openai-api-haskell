@@ -1,0 +1,2 @@
+packages: openai-hs
+          openai-servant
