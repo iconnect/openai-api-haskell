@@ -268,14 +268,14 @@ instance A.FromJSON ChatMessage where
 
 instance A.ToJSON ChatMessage where
   toJSON (ChatMessage {chmContent = content, chmRole = role, chmFunctionCall = functionCall, chmName = name}) =
-    A.object $ 
+    A.object $
       [ "content" A..= content,
         "role" A..= role
       ] ++ catMaybes
-      [ ("function_call" A..=) <$> functionCall, 
+      [ ("function_call" A..=) <$> functionCall,
         ("name" A..=) <$> name
       ]
-      
+
 data ChatFunction = ChatFunction
   { chfName :: T.Text,
     chfDescription :: T.Text,
