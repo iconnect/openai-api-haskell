@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 -- | The API
 module OpenAI.Api where
 
@@ -6,11 +7,38 @@ import Servant.API
 import Servant.Auth
 import Servant.Auth.Client
 import Servant.Multipart.API
+import Servant.Client.Core
+import Data.Sequence ((<|))
+import Data.Proxy
+import Data.Kind
 
-type OpenAIAuth = Auth '[Bearer] ()
+data BearerOrAzureApiKey
+
+
+-- | @'HasBearer' auths@ is nominally a redundant constraint, but ensures we're not
+-- trying to send a token to an API that doesn't accept them.
+instance HasClient m api => HasClient m (OpenAIAuthProvider '[BearerOrAzureApiKey] a :> api) where
+  type Client m (OpenAIAuthProvider '[BearerOrAzureApiKey] a :> api) = Token -> Client m api
+
+  clientWithRoute m _ req (Token token)
+    = clientWithRoute m (Proxy :: Proxy api)
+    $ req { requestHeaders = (azureHeader, token) <| ("Authorization", bearerHeaderVal) <| requestHeaders req  }
+      where
+        bearerHeaderVal = "Bearer " <> token
+        azureHeader     = "api-key"
+
+  hoistClientMonad pm _ nt cl = hoistClientMonad pm (Proxy :: Proxy api) nt . cl
+
+data OpenAIAuthProvider (auths :: [Type]) val
+
+type OpenAIAuth = OpenAIAuthProvider '[BearerOrAzureApiKey] ()
 
 type OpenAIApi =
   "v1" :> OpenAIApiInternal
+
+-- | The Azure API has no versioning in the URL, that's part of the url query param.
+type AzureOpenAIApi =
+  OpenAIApiInternal
 
 type OpenAIApiInternal =
   "models" :> ModelsApi
@@ -32,7 +60,7 @@ type CompletionsApi =
   OpenAIAuth :> ReqBody '[JSON] CompletionCreate :> Post '[JSON] CompletionResponse
 
 type ChatApi =
-  OpenAIAuth :> "completions" :> ReqBody '[JSON] ChatCompletionRequest :> Post '[JSON] ChatResponse
+  OpenAIAuth :> "completions" :> ReqBody '[JSON] ChatCompletionRequest :> QueryParam' '[Required] "api-version" String :> Post '[JSON] ChatResponse
 
 type EditsApi =
   OpenAIAuth :> ReqBody '[JSON] EditCreate :> Post '[JSON] EditResponse
