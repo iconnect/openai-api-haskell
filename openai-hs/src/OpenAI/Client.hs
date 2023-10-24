@@ -155,7 +155,7 @@ makeOpenAIClient ::
   OpenAIClient
 makeOpenAIClient = makeOpenAIClient' openaiBaseUrl
 
-api :: Proxy OpenAIApi
+api :: Proxy AzureOpenAIApi
 api = Proxy
 
 openaiBaseUrl :: BaseUrl
@@ -181,7 +181,7 @@ EP1 (getModel, ModelId, Model)
 
 EP1 (completeText, CompletionCreate, CompletionResponse)
 
-EP1 (completeChat, ChatCompletionRequest, ChatResponse)
+EP2 (completeChat, ChatCompletionRequest, String, ChatResponse)
 
 EP1 (createTextEdit, EditCreate, EditResponse)
 
