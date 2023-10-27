@@ -54,14 +54,17 @@ library
     , bytestring
     , casing
     , cpphs
+    , deepseq
     , http-client
     , http-types
     , openai-servant >=0.2.1
     , servant
     , servant-auth-client
     , servant-client
+    , servant-event-stream >= 0.2.1.0
     , servant-multipart-client
     , text
+    , wai-extra
   default-language: Haskell2010
 
 test-suite openai-hs-test

@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -cpp -pgmPcpphs -optP--cpp #-}
+{-# OPTIONS_GHC -Wno-orphans               #-}
 
 module OpenAI.Client
   ( -- * Basics
@@ -37,6 +39,7 @@ module OpenAI.Client
     ChatResponse (..),
     defaultChatCompletionRequest,
     completeChat,
+    completeChatStreaming,
 
     -- * Edits
     EditCreate (..),
@@ -114,16 +117,22 @@ where
 
 import Control.Monad.IO.Class (MonadIO(..))
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Char8 as BSL8
+import qualified Data.ByteString.Builder as BSL
+import Data.Foldable
 import Data.Proxy
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Client (Manager)
+import Network.Wai.EventSource (ServerEvent(..))
 import OpenAI.Api
 import OpenAI.Client.Internal.Helpers
 import OpenAI.Resources
 import Servant.API
+import Servant.API.EventStream
 import Servant.Auth.Client
-import Servant.Client
+--import Servant.Client
+import Servant.Client.Streaming
 import qualified Servant.Multipart.Client as MP
 
 -- | Your OpenAI API key. Can be obtained from the OpenAI dashboard. Format: @sk-<redacted>@
@@ -183,6 +192,16 @@ EP1 (completeText, CompletionCreate, CompletionResponse)
 
 EP2 (completeChat, ChatCompletionRequest, String, ChatResponse)
 
+completeChatStreaming :: OpenAIClient
+                      -> ChatCompletionRequest
+                      -> String
+                      -> (Either ClientError EventSource -> IO a)
+                      -> IO a
+completeChatStreaming sc rq apiVersion onChunk = do
+  let streamingClient = completeChatStreaming' (scToken sc) rq apiVersion
+      env             = mkClientEnv (scManager sc) (scBaseUrl sc)
+  withClientM streamingClient env onChunk
+
 EP1 (createTextEdit, EditCreate, EditResponse)
 
 EP1 (generateImage, ImageCreate, ImageResponse)
@@ -226,11 +245,27 @@ EP1 (getEngine, EngineId, Engine)
 EP2 (engineCompleteText, EngineId, TextCompletionCreate, TextCompletion)
 EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineEmbedding))
 
+-- /NOTE/: This really belongs into the 'servant-event-stream' library.
+instance MimeUnrender EventStream ServerEvent where
+  mimeUnrender _ bs =
+    -- This might point to a contiguous chunk or the beginning of
+    -- something like a 'data:' frame, so we need to first split this
+    -- into subchunks based on newlines, and then process this.
+    let dropPrefix = BSL.drop 2 -- drop ':' and ' '
+        processChunk acc chunk = case BSL8.break ((==) ':') bs of
+          ("", "")      -> Right acc
+                           -- fixme: reserve
+          ("data", rst) -> Right $ acc { eventData = (eventData acc) <> [BSL.lazyByteString $ dropPrefix rst] }
+          (_, _)        -> Right $ acc { eventData = (eventData acc) <> [BSL.lazyByteString bs] }
+    in  foldlM processChunk (ServerEvent Nothing Nothing []) (BSL8.lines bs)
+
+
+completeChatStreaming' :: Token -> ChatCompletionRequest -> String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
     )
     :<|> (completeText')
-    :<|> (completeChat')
+    :<|> (completeChat' :<|> completeChatStreaming')
     :<|> (createTextEdit')
     :<|> ( generateImage'
              :<|> createImageEdit'

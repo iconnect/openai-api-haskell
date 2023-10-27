@@ -53,13 +53,16 @@ library
     , bytestring
     , casing
     , containers
+    , deepseq
     , mime-types
     , servant
     , servant-auth
     , servant-auth-client
     , servant-client-core
+    , servant-event-stream >= 0.2.1.0
     , servant-multipart-api
     , text
     , time
     , vector
+    , wai-extra
   default-language: Haskell2010

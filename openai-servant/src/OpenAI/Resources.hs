@@ -2,6 +2,9 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module OpenAI.Resources
   ( -- * Core Types
@@ -28,6 +31,11 @@ module OpenAI.Resources
     ChatChoice (..),
     ChatResponse (..),
     defaultChatCompletionRequest,
+
+    -- * Chat streaming
+    ChatChoiceChunk (..),
+    ChatChoiceDelta (..),
+    ChatResponseChunk (..),
 
     -- * Edits
     EditCreate (..),
@@ -85,7 +93,9 @@ module OpenAI.Resources
   )
 where
 
+import Control.DeepSeq
 import qualified Data.Aeson as A
+import qualified Data.Aeson.KeyMap as KM
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (catMaybes)
 import qualified Data.Text as T
@@ -93,6 +103,7 @@ import qualified Data.Text.Encoding as T
 import Data.Time
 import Data.Time.Clock.POSIX
 import qualified Data.Vector as V
+import GHC.Generics
 import Network.Mime (defaultMimeLookup)
 import OpenAI.Internal.Aeson
 import Servant.API
@@ -100,7 +111,8 @@ import Servant.Multipart.API
 
 -- | A 'UTCTime' wrapper that has unix timestamp JSON representation
 newtype TimeStamp = TimeStamp {unTimeStamp :: UTCTime}
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 instance A.ToJSON TimeStamp where
   toJSON = A.Number . fromRational . toRational . utcTimeToPOSIXSeconds . unTimeStamp
@@ -120,7 +132,8 @@ instance ToHttpApiData TimeStamp where
 newtype OpenAIList a = OpenAIList
   { olData :: V.Vector a
   }
-  deriving (Show, Eq, Functor)
+  deriving stock (Show, Eq, Functor, Generic)
+  deriving anyclass NFData
 
 instance Semigroup (OpenAIList a) where
   (<>) a b = OpenAIList (olData a <> olData b)
@@ -139,7 +152,8 @@ data Usage = Usage
     usCompletionTokens :: Int,
     usTotalTokens :: Int
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 2) ''Usage)
 
@@ -153,10 +167,13 @@ data Model = Model
     mOwnedBy :: T.Text,
     mPermission :: [A.Object] -- TODO 2023.03.22: Docs do not say what this is
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 newtype ModelId = ModelId {unModelId :: T.Text}
-  deriving (Show, Eq, ToJSON, FromJSON, ToHttpApiData)
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 1) ''Model)
 
@@ -211,7 +228,8 @@ data CompletionChoice = CompletionChoice
     cchLogprobs :: Maybe (V.Vector Double),
     cchFinishReason :: Maybe T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data CompletionResponse = CompletionResponse
   { crId :: T.Text,
@@ -221,7 +239,8 @@ data CompletionResponse = CompletionResponse
     crChoices :: [CompletionChoice],
     crUsage :: A.Object
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''CompletionCreate)
 $(deriveJSON (jsonOpts 3) ''CompletionChoice)
@@ -232,15 +251,16 @@ $(deriveJSON (jsonOpts 2) ''CompletionResponse)
 ------------------------
 
 data ChatFunctionCall = ChatFunctionCall
-  { chfcName :: T.Text,
+  { chfcName :: Maybe T.Text,
     chfcArguments :: A.Value
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass NFData
 
 instance A.FromJSON ChatFunctionCall where
   parseJSON = A.withObject "ChatFunctionCall" $ \obj -> do
-    name <- obj A..: "name"
-    arguments <- obj A..: "arguments" >>= A.withEmbeddedJSON "Arguments" pure
+    name <- obj A..:? "name"
+    arguments <- obj A..: "arguments"
 
     pure $ ChatFunctionCall {chfcName = name, chfcArguments = arguments}
 
@@ -257,7 +277,8 @@ data ChatMessage = ChatMessage
     chmFunctionCall :: Maybe ChatFunctionCall,
     chmName :: Maybe T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 instance A.FromJSON ChatMessage where
   parseJSON = A.withObject "ChatMessage" $ \obj ->
@@ -344,7 +365,36 @@ data ChatChoice = ChatChoice
     chchMessage :: ChatMessage,
     chchFinishReason :: Maybe T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data ChatChoiceChunk = ChatChoiceChunk
+  { chccIndex        :: Int,
+    chccFinishReason :: Maybe T.Text,
+    chccDelta        :: ChatChoiceDelta
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data ChatChoiceDelta =
+    NoChatChoiceDelta
+  | ChatChoiceDelta (Maybe T.Text) (Maybe ChatFunctionCall)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ChatChoiceDelta where
+  toJSON = \case
+    NoChatChoiceDelta          -> A.object []
+    ChatChoiceDelta content fc -> A.object [ "content" A..= A.toJSON content, "function_call" A..= A.toJSON fc ]
+
+instance FromJSON ChatChoiceDelta where
+  parseJSON = A.withObject "ChatChoiceDelta" $ \o -> do
+    case KM.null o of
+      True  -> pure $ NoChatChoiceDelta
+      False -> do
+        functionCall <- o A..:? "function_call"
+        content      <- o A..:? "content"
+        pure $ ChatChoiceDelta content functionCall
 
 data ChatResponse = ChatResponse
   { chrId :: T.Text,
@@ -352,12 +402,25 @@ data ChatResponse = ChatResponse
     chrCreated :: Int,
     chrChoices :: [ChatChoice],
     chrUsage :: Usage
-  }
+  } deriving stock Generic
+    deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''ChatFunction)
 $(deriveJSON (jsonOpts 4) ''ChatCompletionRequest)
 $(deriveJSON (jsonOpts 4) ''ChatChoice)
+$(deriveJSON (jsonOpts 4) ''ChatChoiceChunk)
 $(deriveJSON (jsonOpts 3) ''ChatResponse)
+
+-- | Chat completion object we get from a streaming chat completion.
+data ChatResponseChunk = ChatResponseChunk
+  { chrcId      :: T.Text,
+    chrcObject  :: T.Text,
+    chrcCreated :: Int,
+    chrcChoices :: [ChatChoiceChunk]
+  } deriving stock Generic
+    deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ChatResponseChunk)
 
 ------------------------
 ------ Edits API
@@ -388,7 +451,8 @@ data EditChoice = EditChoice
   { edchText :: T.Text,
     edchIndex :: Int
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data EditResponse = EditResponse
   { edrObject :: T.Text,
@@ -396,7 +460,8 @@ data EditResponse = EditResponse
     edrChoices :: [EditChoice],
     edrUsage :: Usage
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 4) ''EditCreate)
 $(deriveJSON (jsonOpts 4) ''EditChoice)
@@ -409,13 +474,15 @@ $(deriveJSON (jsonOpts 3) ''EditResponse)
 data ImageResponseData = ImageResponseData
   { irdUrl :: T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data ImageResponse = ImageResponse
   { irCreated :: TimeStamp,
     irData :: [ImageResponseData]
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''ImageResponseData)
 $(deriveJSON (jsonOpts 2) ''ImageResponse)
@@ -474,13 +541,15 @@ data EmbeddingResponseData = EmbeddingResponseData
     embdEmbedding :: V.Vector Double,
     embdIndex :: Int
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data EmbeddingUsage = EmbeddingUsage
   { embuPromptTokens :: Int,
     embuTotalTokens :: Int
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data EmbeddingResponse = EmbeddingResponse
   { embrObject :: T.Text,
@@ -488,7 +557,8 @@ data EmbeddingResponse = EmbeddingResponse
     embrModel :: ModelId,
     embrUsage :: EmbeddingUsage
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 4) ''EmbeddingCreate)
 $(deriveJSON (jsonOpts 4) ''EmbeddingResponseData)
@@ -502,7 +572,8 @@ $(deriveJSON (jsonOpts 4) ''EmbeddingResponse)
 data AudioResponseData = AudioResponseData
   { audrdText :: T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 5) ''AudioResponseData)
 
@@ -575,7 +646,9 @@ data FileHunk
 $(deriveJSON (jsonOpts 3) ''FineTuneHunk)
 
 newtype FileId = FileId {unFileId :: T.Text}
-  deriving (Show, Eq, ToJSON, FromJSON, ToHttpApiData)
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
 
 data File = File
   { fId :: FileId,
@@ -585,7 +658,8 @@ data File = File
     fFilename :: T.Text,
     fPurpose :: T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 1) ''File)
 
@@ -618,7 +692,8 @@ instance ToMultipart Mem FileCreate where
 data FileDeleteConfirmation = FileDeleteConfirmation
   { fdcId :: FileId
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''FileDeleteConfirmation)
 
@@ -633,14 +708,17 @@ $(deriveJSON (jsonOpts 3) ''FileDeleteConfirmation)
 ------------------------
 
 newtype EngineId = EngineId {unEngineId :: T.Text}
-  deriving (Show, Eq, ToJSON, FromJSON, ToHttpApiData)
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
 
 data Engine = Engine
   { eId :: EngineId,
     eOwner :: T.Text,
     eReady :: Bool
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 1) ''Engine)
 
@@ -649,7 +727,9 @@ $(deriveJSON (jsonOpts 1) ''Engine)
 ------------------------
 
 newtype TextCompletionId = TextCompletionId {unTextCompletionId :: T.Text}
-  deriving (Show, Eq, ToJSON, FromJSON, ToHttpApiData)
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
 
 data TextCompletionChoice = TextCompletionChoice
   { tccText :: T.Text,
@@ -657,7 +737,8 @@ data TextCompletionChoice = TextCompletionChoice
     tccLogProps :: Maybe Int,
     tccFinishReason :: T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data TextCompletion = TextCompletion
   { tcId :: TextCompletionId,
@@ -665,7 +746,8 @@ data TextCompletion = TextCompletion
     tcModel :: T.Text,
     tcChoices :: V.Vector TextCompletionChoice
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data TextCompletionCreate = TextCompletionCreate
   { tccrPrompt :: T.Text, -- TODO: support lists of strings
@@ -713,7 +795,8 @@ data EngineEmbeddingCreate = EngineEmbeddingCreate
 
 data EngineEmbedding = EngineEmbedding
   {eneEmbedding :: V.Vector Double, eneIndex :: Int}
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving NFData
 
 $(deriveJSON (jsonOpts 4) ''EngineEmbeddingCreate)
 $(deriveJSON (jsonOpts 3) ''EngineEmbedding)
@@ -724,7 +807,9 @@ $(deriveJSON (jsonOpts 3) ''EngineEmbedding)
 ------------------------
 
 newtype FineTuneId = FineTuneId {unFineTuneId :: T.Text}
-  deriving (Show, Eq, ToJSON, FromJSON, ToHttpApiData)
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
 
 data FineTuneCreate = FineTuneCreate
   { ftcTrainingFile :: FileId,
@@ -760,7 +845,8 @@ data FineTuneEvent = FineTuneEvent
     fteLevel :: T.Text,
     fteMessage :: T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data FineTune = FineTune
   { ftId :: FineTuneId,
@@ -770,7 +856,8 @@ data FineTune = FineTune
     ftTunedModel :: Maybe T.Text,
     ftStatus :: T.Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''FineTuneCreate)
 $(deriveJSON (jsonOpts 3) ''FineTuneEvent)

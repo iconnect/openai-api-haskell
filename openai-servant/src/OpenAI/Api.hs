@@ -4,6 +4,7 @@ module OpenAI.Api where
 
 import OpenAI.Resources
 import Servant.API
+import Servant.API.EventStream
 import Servant.Auth
 import Servant.Auth.Client
 import Servant.Multipart.API
@@ -43,7 +44,7 @@ type AzureOpenAIApi =
 type OpenAIApiInternal =
   "models" :> ModelsApi
     :<|> "completions" :> CompletionsApi
-    :<|> "chat" :> ChatApi
+    :<|> "chat" :> (ChatApi :<|> ChatApiStreaming)
     :<|> "edits" :> EditsApi
     :<|> "images" :> ImagesApi
     :<|> "embeddings" :> EmbeddingsApi
@@ -60,7 +61,16 @@ type CompletionsApi =
   OpenAIAuth :> ReqBody '[JSON] CompletionCreate :> Post '[JSON] CompletionResponse
 
 type ChatApi =
-  OpenAIAuth :> "completions" :> ReqBody '[JSON] ChatCompletionRequest :> QueryParam' '[Required] "api-version" String :> Post '[JSON] ChatResponse
+  OpenAIAuth :> "completions"
+             :> ReqBody '[JSON] ChatCompletionRequest
+             :> QueryParam' '[Required] "api-version" String
+             :> Post '[JSON] ChatResponse
+
+type ChatApiStreaming =
+  OpenAIAuth :> "completions"
+             :> ReqBody '[JSON] ChatCompletionRequest
+             :> QueryParam' '[Required] "api-version" String
+             :> StreamPost NewlineFraming EventStream EventSource
 
 type EditsApi =
   OpenAIAuth :> ReqBody '[JSON] EditCreate :> Post '[JSON] EditResponse
