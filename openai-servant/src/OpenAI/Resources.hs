@@ -97,7 +97,7 @@ import Control.DeepSeq
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.ByteString.Lazy as BSL
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time
@@ -259,10 +259,10 @@ data ChatFunctionCall = ChatFunctionCall
 
 instance A.FromJSON ChatFunctionCall where
   parseJSON = A.withObject "ChatFunctionCall" $ \obj -> do
-    name <- obj A..:? "name"
-    arguments <- obj A..: "arguments"
+    name      <- obj A..:? "name"
+    arguments <- obj A..:? "arguments"
 
-    pure $ ChatFunctionCall {chfcName = name, chfcArguments = arguments}
+    pure $ ChatFunctionCall {chfcName = name, chfcArguments = fromMaybe A.Null arguments}
 
 instance A.ToJSON ChatFunctionCall where
   toJSON (ChatFunctionCall {chfcName = name, chfcArguments = arguments}) =

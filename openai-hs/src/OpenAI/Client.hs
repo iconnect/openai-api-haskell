@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -cpp -pgmPcpphs -optP--cpp #-}
@@ -248,16 +249,28 @@ EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineE
 -- /NOTE/: This really belongs into the 'servant-event-stream' library.
 instance MimeUnrender EventStream ServerEvent where
   mimeUnrender _ bs =
-    -- This might point to a contiguous chunk or the beginning of
-    -- something like a 'data:' frame, so we need to first split this
-    -- into subchunks based on newlines, and then process this.
-    let dropPrefix = BSL.drop 2 -- drop ':' and ' '
-        processChunk acc chunk = case BSL8.break ((==) ':') bs of
+    let !chunks = BSL8.lines bs
+    in foldlM processChunk (ServerEvent Nothing Nothing []) chunks
+    where
+      processChunk !acc chunk = case BSL8.break ((==) ':') chunk of
           ("", "")      -> Right acc
                            -- fixme: reserve
-          ("data", rst) -> Right $ acc { eventData = (eventData acc) <> [BSL.lazyByteString $ dropPrefix rst] }
-          (_, _)        -> Right $ acc { eventData = (eventData acc) <> [BSL.lazyByteString bs] }
-    in  foldlM processChunk (ServerEvent Nothing Nothing []) (BSL8.lines bs)
+          ("data", rst) -> withServerEvent acc $ addEventData (dropPrefix rst)
+          (_, _)        -> withServerEvent acc $ addEventData bs
+
+      dropPrefix = BSL.drop 2 -- drop ':' and ' '
+
+      withServerEvent :: ServerEvent -> ([BSL.Builder] -> [BSL.Builder]) -> Either String ServerEvent
+      withServerEvent se f = case se of
+        ServerEvent{}  -> Right $ se { eventData = f (eventData se) }
+        CommentEvent{} -> Left "withServerEvent found CommentEvent"
+        RetryEvent{}   -> Left "withServerEvent found RetryEvent"
+        CloseEvent     -> Left "withServerEvent found CloseEvent"
+
+      addEventData :: BSL8.ByteString -> [BSL.Builder] -> [BSL.Builder]
+      addEventData c []  = [BSL.lazyByteString c]
+      addEventData c [x] = [x <> BSL.lazyByteString c]
+      addEventData c xss = xss <> [BSL.lazyByteString c] -- in practice it shouldn't happen.
 
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> String -> ClientM EventSource

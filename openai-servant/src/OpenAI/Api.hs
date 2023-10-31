@@ -2,16 +2,32 @@
 -- | The API
 module OpenAI.Api where
 
+import Control.Applicative
+import Data.Kind
+import Data.Proxy
+import Data.Sequence ((<|))
 import OpenAI.Resources
 import Servant.API
 import Servant.API.EventStream
 import Servant.Auth
 import Servant.Auth.Client
-import Servant.Multipart.API
 import Servant.Client.Core
-import Data.Sequence ((<|))
-import Data.Proxy
-import Data.Kind
+import Servant.Multipart.API
+import Servant.Types.SourceT
+import qualified Data.Attoparsec.ByteString       as A
+import qualified Data.Attoparsec.ByteString.Char8 as A8
+import qualified Data.ByteString.Lazy             as LBS
+import qualified Data.ByteString.Char8 as BS8
+
+-- A more robust version of 'NewlineFraming' which aggressively strips all the newlines that
+-- occurs between frames, like in the OpenAI case.
+data OpenAIFraming
+
+instance FramingUnrender OpenAIFraming where
+    framingUnrender _ f = transformWithAtto $ do
+        bs <- A.takeWhile (/= 10)
+        () <$ (A.takeWhile ((==) 10)) <|> A.endOfInput
+        either fail pure (f (LBS.fromStrict bs))
 
 data BearerOrAzureApiKey
 
@@ -70,7 +86,7 @@ type ChatApiStreaming =
   OpenAIAuth :> "completions"
              :> ReqBody '[JSON] ChatCompletionRequest
              :> QueryParam' '[Required] "api-version" String
-             :> StreamPost NewlineFraming EventStream EventSource
+             :> StreamPost OpenAIFraming EventStream EventSource
 
 type EditsApi =
   OpenAIAuth :> ReqBody '[JSON] EditCreate :> Post '[JSON] EditResponse
