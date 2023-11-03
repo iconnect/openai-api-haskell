@@ -118,14 +118,10 @@ where
 
 import Control.Monad.IO.Class (MonadIO(..))
 import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Lazy.Char8 as BSL8
-import qualified Data.ByteString.Builder as BSL
-import Data.Foldable
 import Data.Proxy
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Client (Manager)
-import Network.Wai.EventSource (ServerEvent(..))
 import OpenAI.Api
 import OpenAI.Client.Internal.Helpers
 import OpenAI.Resources
@@ -245,33 +241,6 @@ EP0 (listEngines, (OpenAIList Engine))
 EP1 (getEngine, EngineId, Engine)
 EP2 (engineCompleteText, EngineId, TextCompletionCreate, TextCompletion)
 EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineEmbedding))
-
--- /NOTE/: This really belongs into the 'servant-event-stream' library.
-instance MimeUnrender EventStream ServerEvent where
-  mimeUnrender _ bs =
-    let !chunks = BSL8.lines bs
-    in foldlM processChunk (ServerEvent Nothing Nothing []) chunks
-    where
-      processChunk !acc chunk = case BSL8.break ((==) ':') chunk of
-          ("", "")      -> Right acc
-                           -- fixme: reserve
-          ("data", rst) -> withServerEvent acc $ addEventData (dropPrefix rst)
-          (_, _)        -> withServerEvent acc $ addEventData bs
-
-      dropPrefix = BSL.drop 2 -- drop ':' and ' '
-
-      withServerEvent :: ServerEvent -> ([BSL.Builder] -> [BSL.Builder]) -> Either String ServerEvent
-      withServerEvent se f = case se of
-        ServerEvent{}  -> Right $ se { eventData = f (eventData se) }
-        CommentEvent{} -> Left "withServerEvent found CommentEvent"
-        RetryEvent{}   -> Left "withServerEvent found RetryEvent"
-        CloseEvent     -> Left "withServerEvent found CloseEvent"
-
-      addEventData :: BSL8.ByteString -> [BSL.Builder] -> [BSL.Builder]
-      addEventData c []  = [BSL.lazyByteString c]
-      addEventData c [x] = [x <> BSL.lazyByteString c]
-      addEventData c xss = xss <> [BSL.lazyByteString c] -- in practice it shouldn't happen.
-
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> String -> ClientM EventSource
 ( ( listModels'

@@ -86,7 +86,7 @@ type ChatApiStreaming =
   OpenAIAuth :> "completions"
              :> ReqBody '[JSON] ChatCompletionRequest
              :> QueryParam' '[Required] "api-version" String
-             :> StreamPost OpenAIFraming EventStream EventSource
+             :> StreamPost NoFraming EventStream EventSource
 
 type EditsApi =
   OpenAIAuth :> ReqBody '[JSON] EditCreate :> Post '[JSON] EditResponse

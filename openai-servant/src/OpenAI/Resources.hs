@@ -97,7 +97,7 @@ import Control.DeepSeq
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.ByteString.Lazy as BSL
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time
@@ -252,7 +252,7 @@ $(deriveJSON (jsonOpts 2) ''CompletionResponse)
 
 data ChatFunctionCall = ChatFunctionCall
   { chfcName :: Maybe T.Text,
-    chfcArguments :: A.Value
+    chfcArguments :: T.Text
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass NFData
@@ -260,15 +260,15 @@ data ChatFunctionCall = ChatFunctionCall
 instance A.FromJSON ChatFunctionCall where
   parseJSON = A.withObject "ChatFunctionCall" $ \obj -> do
     name      <- obj A..:? "name"
-    arguments <- obj A..:? "arguments"
+    arguments <- obj A..: "arguments"
 
-    pure $ ChatFunctionCall {chfcName = name, chfcArguments = fromMaybe A.Null arguments}
+    pure $ ChatFunctionCall {chfcName = name, chfcArguments = arguments}
 
 instance A.ToJSON ChatFunctionCall where
   toJSON (ChatFunctionCall {chfcName = name, chfcArguments = arguments}) =
     A.object
       [ "name" A..= name,
-        "arguments" A..= T.decodeUtf8 (BSL.toStrict (A.encode arguments))
+        "arguments" A..= arguments
       ]
 
 data ChatMessage = ChatMessage
@@ -417,7 +417,7 @@ data ChatResponseChunk = ChatResponseChunk
     chrcObject  :: T.Text,
     chrcCreated :: Int,
     chrcChoices :: [ChatChoiceChunk]
-  } deriving stock Generic
+  } deriving stock (Generic, Show, Eq)
     deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 4) ''ChatResponseChunk)
