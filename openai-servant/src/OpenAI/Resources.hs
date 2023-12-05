@@ -5,6 +5,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 
 module OpenAI.Resources
   ( -- * Core Types
@@ -30,6 +31,7 @@ module OpenAI.Resources
     ChatCompletionRequest (..),
     ChatChoice (..),
     ChatResponse (..),
+    ResponseFormat(..),
     defaultChatCompletionRequest,
 
     -- * Chat streaming
@@ -335,11 +337,33 @@ data ChatCompletionRequest = ChatCompletionRequest
     chcrStop :: Maybe (V.Vector T.Text),
     chcrMaxTokens :: Maybe Int,
     chcrPresencePenalty :: Maybe Double,
+    chcrResponseFormat :: Maybe ResponseFormat,
     chcrFrequencyPenalty :: Maybe Double,
     chcrLogitBias :: Maybe (V.Vector Double),
     chcrUser :: Maybe String
   }
   deriving (Show, Eq)
+
+data ResponseFormat
+  = RF_text
+  | RF_json_object
+  deriving (Show, Eq)
+
+instance ToJSON ResponseFormat where
+  toJSON = \case
+    RF_text        -> A.object [ "type" A..= A.toJSON @T.Text "text" ]
+    RF_json_object -> A.object [ "type" A..= A.toJSON @T.Text "json_object" ]
+
+instance FromJSON ResponseFormat where
+  parseJSON = A.withObject "ResponseFormat" $ \o -> do
+    rt <- o A..: "type"
+    case rt of
+      "text"
+        -> pure RF_text
+      "json_object"
+        -> pure RF_json_object
+      xs
+        -> fail $ "ResponseFormat unexpected type: " <> T.unpack xs
 
 defaultChatCompletionRequest :: ModelId -> [ChatMessage] -> ChatCompletionRequest
 defaultChatCompletionRequest model messages =
@@ -355,6 +379,7 @@ defaultChatCompletionRequest model messages =
       chcrStop = Nothing,
       chcrMaxTokens = Nothing,
       chcrPresencePenalty = Nothing,
+      chcrResponseFormat = Nothing,
       chcrFrequencyPenalty = Nothing,
       chcrLogitBias = Nothing,
       chcrUser = Nothing
