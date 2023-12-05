@@ -351,8 +351,8 @@ data ResponseFormat
 
 instance ToJSON ResponseFormat where
   toJSON = \case
-    RF_text        -> A.object [ "type" A..= A.toJSON @T.Text "text" ]
-    RF_json_object -> A.object [ "type" A..= A.toJSON @T.Text "json_object" ]
+    RF_text        -> A.object [ "type" A..= A.String "text" ]
+    RF_json_object -> A.object [ "type" A..= A.String "json_object" ]
 
 instance FromJSON ResponseFormat where
   parseJSON = A.withObject "ResponseFormat" $ \o -> do
