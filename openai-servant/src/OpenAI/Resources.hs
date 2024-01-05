@@ -24,6 +24,8 @@ module OpenAI.Resources
     ChatFunctionCall (..),
     ChatFunctionCallStrategy (..),
     ChatToolChoiceStrategy (..),
+    ChatTool (..),
+    ChatToolFunction (..),
     ChatMessage (..),
     ChatCompletionRequest (..),
     ChatChoice (..),
@@ -331,13 +333,29 @@ instance FromJSON ChatToolChoiceStrategy where
       unsupportedType
         -> A.typeMismatch ("Unsupported tool type: " <> T.unpack unsupportedType) (A.String unsupportedType)
 
+data ChatTool = ChatTool
+  { chtType :: T.Text,
+    chfFunction :: ChatToolFunction
+  }
+  deriving (Show, Eq)
+
+data ChatToolFunction = ChatToolFunction
+  { chtfDescription :: Maybe T.Text,
+    chtfName :: T.Text,
+    chtfParameters :: Maybe A.Value
+  }
+  deriving (Show, Eq)
+
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
     chcrMessages :: [ChatMessage],
+    -- | A list of functions the model may generate JSON inputs for.
+    -- /Deprecated/ by OpenAI in favour of \"tools\".
     chcrFunctions :: Maybe [ChatFunction],
     -- | The function to call. /deprecated/ by OpenAI in favour of \"tool_choice\".
     chcrFunctionCall :: Maybe ChatFunctionCallStrategy,
     chcrToolChoice :: Maybe ChatToolChoiceStrategy,
+    chcrTools      :: Maybe [ChatTool],
     chcrTemperature :: Maybe Double,
     chcrTopP :: Maybe Double,
     chcrN :: Maybe Int,
@@ -359,6 +377,7 @@ defaultChatCompletionRequest model messages =
       chcrFunctions = Nothing,
       chcrFunctionCall = Nothing,
       chcrToolChoice = Nothing,
+      chcrTools = Nothing,
       chcrTemperature = Nothing,
       chcrTopP = Nothing,
       chcrN = Nothing,
@@ -387,6 +406,8 @@ data ChatResponse = ChatResponse
   }
 
 $(deriveJSON (jsonOpts 3) ''ChatFunction)
+$(deriveJSON (jsonOpts 4) ''ChatToolFunction)
+$(deriveJSON (jsonOpts 3) ''ChatTool)
 $(deriveJSON (jsonOpts 4) ''ChatCompletionRequest)
 $(deriveJSON (jsonOpts 4) ''ChatChoice)
 $(deriveJSON (jsonOpts 3) ''ChatResponse)
