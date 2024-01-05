@@ -23,6 +23,7 @@ module OpenAI.Resources
     ChatFunction (..),
     ChatFunctionCall (..),
     ChatFunctionCallStrategy (..),
+    ChatToolChoiceStrategy (..),
     ChatMessage (..),
     ChatCompletionRequest (..),
     ChatChoice (..),
@@ -86,6 +87,7 @@ module OpenAI.Resources
 where
 
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as A
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (catMaybes)
 import qualified Data.Text as T
@@ -302,11 +304,40 @@ instance FromJSON ChatFunctionCallStrategy where
     functionName <- o A..: "name"
     pure $ CFCS_name functionName
 
+data ChatToolChoiceStrategy =
+    CFTS_auto
+  | CFTS_none
+  | CFTS_function T.Text
+  deriving (Show, Eq)
+
+instance ToJSON ChatToolChoiceStrategy where
+  toJSON = \case
+    CFTS_auto                  -> A.String "auto"
+    CFTS_none                  -> A.String "none"
+    CFTS_function functionName -> A.object [ "type" A..= A.String "function"
+                                           , "function" A..= A.object [ "name" A..= A.toJSON functionName ]
+                                           ]
+
+instance FromJSON ChatToolChoiceStrategy where
+  parseJSON (A.String "auto") = pure CFTS_auto
+  parseJSON (A.String "none") = pure CFTS_none
+  parseJSON xs = flip (A.withObject "ChatToolChoiceStrategy") xs $ \o -> do
+    toolType     <- o A..: "type"
+    case toolType of
+      "function" -> do
+        funcBlob     <- o        A..: "function"
+        functionName <- funcBlob A..: "name"
+        pure $ CFTS_function functionName
+      unsupportedType
+        -> A.typeMismatch ("Unsupported tool type: " <> T.unpack unsupportedType) (A.String unsupportedType)
+
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
     chcrMessages :: [ChatMessage],
     chcrFunctions :: Maybe [ChatFunction],
+    -- | The function to call. /deprecated/ by OpenAI in favour of \"tool_choice\".
     chcrFunctionCall :: Maybe ChatFunctionCallStrategy,
+    chcrToolChoice :: Maybe ChatToolChoiceStrategy,
     chcrTemperature :: Maybe Double,
     chcrTopP :: Maybe Double,
     chcrN :: Maybe Int,
@@ -327,6 +358,7 @@ defaultChatCompletionRequest model messages =
       chcrMessages = messages,
       chcrFunctions = Nothing,
       chcrFunctionCall = Nothing,
+      chcrToolChoice = Nothing,
       chcrTemperature = Nothing,
       chcrTopP = Nothing,
       chcrN = Nothing,
