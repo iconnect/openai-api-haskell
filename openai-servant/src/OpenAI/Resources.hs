@@ -27,6 +27,9 @@ module OpenAI.Resources
     ChatFunction (..),
     ChatFunctionCall (..),
     ChatFunctionCallStrategy (..),
+    ChatToolChoiceStrategy (..),
+    ChatTool (..),
+    ChatToolFunction (..),
     ChatMessage (..),
     ChatCompletionRequest (..),
     ChatChoice (..),
@@ -98,6 +101,7 @@ where
 import Control.DeepSeq
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Aeson.Types as A
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (catMaybes)
 import qualified Data.Text as T
@@ -325,11 +329,56 @@ instance FromJSON ChatFunctionCallStrategy where
     functionName <- o A..: "name"
     pure $ CFCS_name functionName
 
+data ChatToolChoiceStrategy =
+    CFTS_auto
+  | CFTS_none
+  | CFTS_function T.Text
+  deriving (Show, Eq)
+
+instance ToJSON ChatToolChoiceStrategy where
+  toJSON = \case
+    CFTS_auto                  -> A.String "auto"
+    CFTS_none                  -> A.String "none"
+    CFTS_function functionName -> A.object [ "type" A..= A.String "function"
+                                           , "function" A..= A.object [ "name" A..= A.toJSON functionName ]
+                                           ]
+
+instance FromJSON ChatToolChoiceStrategy where
+  parseJSON (A.String "auto") = pure CFTS_auto
+  parseJSON (A.String "none") = pure CFTS_none
+  parseJSON xs = flip (A.withObject "ChatToolChoiceStrategy") xs $ \o -> do
+    toolType     <- o A..: "type"
+    case toolType of
+      "function" -> do
+        funcBlob     <- o        A..: "function"
+        functionName <- funcBlob A..: "name"
+        pure $ CFTS_function functionName
+      unsupportedType
+        -> A.typeMismatch ("Unsupported tool type: " <> T.unpack unsupportedType) (A.String unsupportedType)
+
+data ChatTool = ChatTool
+  { chtType :: T.Text,
+    chfFunction :: ChatToolFunction
+  }
+  deriving (Show, Eq)
+
+data ChatToolFunction = ChatToolFunction
+  { chtfDescription :: Maybe T.Text,
+    chtfName :: T.Text,
+    chtfParameters :: Maybe A.Value
+  }
+  deriving (Show, Eq)
+
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
     chcrMessages :: [ChatMessage],
+    -- | A list of functions the model may generate JSON inputs for.
+    -- /Deprecated/ by OpenAI in favour of \"tools\".
     chcrFunctions :: Maybe [ChatFunction],
+    -- | The function to call. /deprecated/ by OpenAI in favour of \"tool_choice\".
     chcrFunctionCall :: Maybe ChatFunctionCallStrategy,
+    chcrToolChoice :: Maybe ChatToolChoiceStrategy,
+    chcrTools      :: Maybe [ChatTool],
     chcrTemperature :: Maybe Double,
     chcrTopP :: Maybe Double,
     chcrN :: Maybe Int,
@@ -372,6 +421,8 @@ defaultChatCompletionRequest model messages =
       chcrMessages = messages,
       chcrFunctions = Nothing,
       chcrFunctionCall = Nothing,
+      chcrToolChoice = Nothing,
+      chcrTools = Nothing,
       chcrTemperature = Nothing,
       chcrTopP = Nothing,
       chcrN = Nothing,
@@ -431,6 +482,8 @@ data ChatResponse = ChatResponse
     deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''ChatFunction)
+$(deriveJSON (jsonOpts 4) ''ChatToolFunction)
+$(deriveJSON (jsonOpts 3) ''ChatTool)
 $(deriveJSON (jsonOpts 4) ''ChatCompletionRequest)
 $(deriveJSON (jsonOpts 4) ''ChatChoice)
 $(deriveJSON (jsonOpts 4) ''ChatChoiceChunk)
