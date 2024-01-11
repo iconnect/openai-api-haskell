@@ -10,6 +10,7 @@ module OpenAI.Client
     OpenAIClient,
     makeOpenAIClient,
     makeOpenAIClient',
+    scBaseUrl,
     ClientError (..),
 
     -- * Helper types
