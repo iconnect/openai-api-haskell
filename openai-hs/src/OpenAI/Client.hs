@@ -193,15 +193,15 @@ EP1 (getModel, ModelId, Model)
 
 EP1 (completeText, CompletionCreate, CompletionResponse)
 
-EP2 (completeChat, ChatCompletionRequest, String, ChatResponse)
+EP2 (completeChat, ChatCompletionRequest, Maybe String, ChatResponse)
 
 completeChatStreaming :: OpenAIClient
                       -> ChatCompletionRequest
-                      -> String
+                      -> Maybe String
                       -> (Either ClientError EventSource -> IO a)
                       -> IO a
-completeChatStreaming sc rq apiVersion onChunk = do
-  let streamingClient = completeChatStreaming' (scToken sc) rq apiVersion
+completeChatStreaming sc rq mb_apiVersion onChunk = do
+  let streamingClient = completeChatStreaming' (scToken sc) rq mb_apiVersion
       env             = mkClientEnv (scManager sc) (scBaseUrl sc)
   withClientM streamingClient env onChunk
 
@@ -248,7 +248,7 @@ EP1 (getEngine, EngineId, Engine)
 EP2 (engineCompleteText, EngineId, TextCompletionCreate, TextCompletion)
 EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineEmbedding))
 
-completeChatStreaming' :: Token -> ChatCompletionRequest -> String -> ClientM EventSource
+completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
     )

@@ -79,13 +79,13 @@ type CompletionsApi =
 type ChatApi =
   OpenAIAuth :> "completions"
              :> ReqBody '[JSON] ChatCompletionRequest
-             :> QueryParam' '[Required] "api-version" String
+             :> QueryParam' '[Optional] "api-version" String
              :> Post '[JSON] ChatResponse
 
 type ChatApiStreaming =
   OpenAIAuth :> "completions"
              :> ReqBody '[JSON] ChatCompletionRequest
-             :> QueryParam' '[Required] "api-version" String
+             :> QueryParam' '[Optional] "api-version" String
              :> StreamPost NoFraming EventStream EventSource
 
 type EditsApi =
