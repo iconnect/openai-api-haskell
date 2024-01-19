@@ -96,6 +96,10 @@ module OpenAI.Resources
     -- * Engine Embeddings (deprecated)
     EngineEmbeddingCreate (..),
     EngineEmbedding (..),
+
+    -- * Assistants (BETA)
+    Assistant(..),
+    AssistantCreate(..),
   )
 where
 
@@ -380,14 +384,16 @@ data ChatTool = ChatTool
   { chtType :: T.Text,
     chfFunction :: ChatToolFunction
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data ChatToolFunction = ChatToolFunction
   { chtfDescription :: Maybe T.Text,
     chtfName :: T.Text,
     chtfParameters :: Maybe A.Value
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
@@ -898,6 +904,42 @@ data EngineEmbedding = EngineEmbedding
 
 $(deriveJSON (jsonOpts 4) ''EngineEmbeddingCreate)
 $(deriveJSON (jsonOpts 3) ''EngineEmbedding)
+
+newtype AssistantId = AssistantId {unAssistantId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+data Assistant = Assistant
+  { astId :: AssistantId
+  , astObject :: T.Text
+  , astCreatedAt :: Int
+  , astName :: Maybe T.Text
+  , astDescription :: Maybe T.Text
+  , astModel :: ModelId
+  , astInstructions :: Maybe T.Text
+  , astTools :: [ChatTool]
+  , astFileIds :: [FileId]
+  , astMetadata :: A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Assistant)
+
+data AssistantCreate = AssistantCreate
+  { acrModel :: ModelId
+  , acrName  :: Maybe T.Text
+  , acrDescription :: Maybe T.Text
+  , acrInstructions :: Maybe T.Text
+  , acrTools :: Maybe [ChatTool]
+  , acrFileIds :: Maybe [FileId]
+  , acrMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''AssistantCreate)
 
 ------------------------
 ------ Old stuff; not touching

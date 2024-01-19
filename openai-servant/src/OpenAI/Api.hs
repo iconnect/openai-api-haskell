@@ -39,10 +39,15 @@ instance HasClient m api => HasClient m (OpenAIAuthProvider '[BearerOrAzureApiKe
 
   clientWithRoute m _ req (Token token)
     = clientWithRoute m (Proxy :: Proxy api)
-    $ req { requestHeaders = (azureHeader, token) <| ("Authorization", bearerHeaderVal) <| requestHeaders req  }
+    $ req { requestHeaders = (azureHeader, token)
+                          <| ("Authorization", bearerHeaderVal)
+                          <| (betaHeader, "assistants=v1")
+                          <| requestHeaders req
+          }
       where
         bearerHeaderVal = "Bearer " <> token
         azureHeader     = "api-key"
+        betaHeader      = "OpenAI-Beta"
 
   hoistClientMonad pm _ nt cl = hoistClientMonad pm (Proxy :: Proxy api) nt . cl
 
@@ -68,6 +73,7 @@ type OpenAIApiInternal =
     :<|> "files" :> FilesApi
     :<|> FineTuneApi
     :<|> "engines" :> EnginesApi
+    :<|> "assistants" :> AssistantsApi
 
 type ModelsApi =
   OpenAIAuth :> Get '[JSON] (OpenAIList Model)
@@ -119,3 +125,6 @@ type EnginesApi =
     :<|> OpenAIAuth :> Capture "engine_id" EngineId :> Get '[JSON] Engine
     :<|> OpenAIAuth :> Capture "engine_id" EngineId :> "completions" :> ReqBody '[JSON] TextCompletionCreate :> Post '[JSON] TextCompletion
     :<|> OpenAIAuth :> Capture "engine_id" EngineId :> "embeddings" :> ReqBody '[JSON] EngineEmbeddingCreate :> Post '[JSON] (OpenAIList EngineEmbedding)
+
+type AssistantsApi =
+  OpenAIAuth :> ReqBody '[JSON] AssistantCreate :> Post '[JSON] Assistant

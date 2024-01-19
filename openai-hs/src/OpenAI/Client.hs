@@ -98,6 +98,10 @@ module OpenAI.Client
     EngineEmbedding (..),
     engineCreateEmbedding,
 
+    AssistantCreate(..),
+    Assistant(..),
+    createAssistant,
+
     -- * Fine tunes (out of date)
     FineTuneId (..),
     FineTuneCreate (..),
@@ -248,6 +252,8 @@ EP1 (getEngine, EngineId, Engine)
 EP2 (engineCompleteText, EngineId, TextCompletionCreate, TextCompletion)
 EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineEmbedding))
 
+EP1 (createAssistant, AssistantCreate, Assistant)
+
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
@@ -274,6 +280,8 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
              :<|> getEngine'
              :<|> engineCompleteText'
              :<|> engineCreateEmbedding'
+           )
+    :<|> ( createAssistant'
            )
   ) =
     client api
