@@ -74,6 +74,7 @@ type OpenAIApiInternal =
     :<|> FineTuneApi
     :<|> "engines" :> EnginesApi
     :<|> "assistants" :> AssistantsApi
+    :<|> "threads" :> ThreadsApi
 
 type ModelsApi =
   OpenAIAuth :> Get '[JSON] (OpenAIList Model)
@@ -135,3 +136,6 @@ type AssistantsApi =
                     :> Get '[JSON] (OpenAIList Assistant)
     :<|> OpenAIAuth :> Capture "assistant_id" AssistantId
                     :> Delete '[JSON] DeleteConfirmation
+
+type ThreadsApi =
+  OpenAIAuth :> ReqBody '[JSON] ThreadCreate :> Post '[JSON] Thread

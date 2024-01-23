@@ -99,6 +99,7 @@ module OpenAI.Client
     EngineEmbedding (..),
     engineCreateEmbedding,
 
+    -- * Assistants (BETA)
     Assistant(..),
     AssistantCreate(..),
     AssistantId(..),
@@ -107,6 +108,12 @@ module OpenAI.Client
     createAssistant,
     listAssistants,
     deleteAssistant,
+
+    -- * Threads (BETA)
+    Thread(..),
+    ThreadCreate(..),
+    ThreadId(..),
+    createThread,
 
     -- * Fine tunes (out of date)
     FineTuneId (..),
@@ -267,6 +274,8 @@ EP1 (createAssistant, AssistantCreate, Assistant)
 EP4 (listAssistants, Maybe Int, Maybe Order, Maybe AssistantId, Maybe AssistantId, (OpenAIList Assistant))
 EP1 (deleteAssistant, AssistantId, DeleteConfirmation)
 
+EP1 (createThread, ThreadCreate, Thread)
+
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
@@ -297,6 +306,8 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
     :<|> ( createAssistant'
              :<|> listAssistants'
              :<|> deleteAssistant'
+           )
+    :<|> ( createThread'
            )
   ) =
     client api

@@ -103,7 +103,13 @@ module OpenAI.Resources
     AssistantCreate(..),
     AssistantId(..),
     AssistantTool(..),
-    Order(..)
+    Order(..),
+
+    -- * Threads (BETA)
+    Thread(..),
+    ThreadCreate(..),
+    ThreadId(..),
+    ThreadMessage(..),
   )
 where
 
@@ -977,6 +983,46 @@ data AssistantCreate = AssistantCreate
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''AssistantCreate)
+
+newtype ThreadId = ThreadId {unThreadId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+data Thread = Thread
+  { thrId :: ThreadId
+  , thrObject :: T.Text
+  , thrCreatedAt :: Int
+  , thrMetadata :: A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Thread)
+
+data ThreadMessage = ThreadMessage
+  { -- | Currently only \"user\" is supported.
+    thrmRole    :: T.Text
+  , thrmContent :: T.Text
+    -- | A list of File IDs that the message should use.
+    -- There can be a maximum of 10 files attached to a message.
+    -- Useful for tools like retrieval and code_interpreter that can access and use files.
+  , thrmFileIds :: Maybe [FileId]
+  , thrmMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ThreadMessage)
+
+data ThreadCreate = ThreadCreate
+  { thrcMessages :: Maybe [ThreadMessage]
+  , thrcMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ThreadCreate)
 
 ------------------------
 ------ Old stuff; not touching
