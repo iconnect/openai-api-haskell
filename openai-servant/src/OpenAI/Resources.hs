@@ -111,6 +111,10 @@ module OpenAI.Resources
     ThreadId(..),
     ThreadMessage(..),
 
+    -- * Messages (BETA)
+    MessageId(..),
+    Message(..),
+
     -- * Runs (BETA)
     Run(..),
     RunCreate(..),
@@ -1033,10 +1037,76 @@ data ThreadCreate = ThreadCreate
 
 $(deriveJSON (jsonOpts 4) ''ThreadCreate)
 
+newtype MessageId = MessageId {unMessageId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+newtype ImageFile = ImageFile
+  { imgfFileId :: FileId }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ImageFile)
+
+data TextMessage = TextMessage
+  { tmsgValue :: T.Text
+    -- FIXME(adn) Support annotations in the near future.
+  , tmsgAnnotations :: [A.Value]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''TextMessage)
+
+data MessageContent
+  = MSG_image ImageFile
+  | MSG_text  TextMessage
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON MessageContent where
+  toJSON = \case
+    MSG_image imgFile
+      -> A.object [ "type" A..= A.String "image_file", "image_file" A..= A.toJSON imgFile ]
+    MSG_text txtMsg
+      -> A.object [ "type" A..= A.String "text", "text" A..= A.toJSON txtMsg ]
+
+instance FromJSON MessageContent where
+  parseJSON = A.withObject "MessageContent" $ \o -> do
+    ty <- o A..: "type"
+    case ty of
+      "image_file" -> do
+        f <- o A..: "image_file"
+        pure $ MSG_image f
+      "text"       -> do
+        t <- o A..: "text"
+        pure $ MSG_text t
+      _            -> A.typeMismatch ("MessageContent, invalid type: " <> show ty) ty
+
 newtype RunId = RunId {unRunId :: T.Text}
   deriving stock (Show, Eq, Generic)
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
+
+-- | A 'Message' object https://platform.openai.com/docs/api-reference/messages/object
+data Message = Message
+  { msgId          :: MessageId
+  , msgObject      :: T.Text
+  , msgCreatedAt   :: T.Text
+  , msgThreadId    :: ThreadId
+    -- | The entity that produced the message. One of 'user' or 'assistant'.
+  , msgRole        :: T.Text
+  , msgContent     :: [MessageContent]
+  , msgAssistantId :: Maybe AssistantId
+  , msgRunId       :: Maybe RunId
+  , msgFileIds     :: [FileId]
+  , msgMetadata    :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Message)
 
 data RunStatus =
     RST_queued

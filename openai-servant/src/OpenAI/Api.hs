@@ -75,6 +75,7 @@ type OpenAIApiInternal =
     :<|> "engines" :> EnginesApi
     :<|> "assistants" :> AssistantsApi
     :<|> "threads" :> ThreadsApi
+    :<|> "messages" :> MessagesApi
     :<|> "runs" :> RunsApi
 
 type ModelsApi =
@@ -140,6 +141,14 @@ type AssistantsApi =
 
 type ThreadsApi =
   OpenAIAuth :> ReqBody '[JSON] ThreadCreate :> Post '[JSON] Thread
+
+type MessagesApi =
+  OpenAIAuth :> "threads" :> Capture "thread_id" ThreadId :> "messages"
+             :> QueryParam "limit" Int
+             :> QueryParam "order" Order
+             :> QueryParam "after" MessageId
+             :> QueryParam "before" MessageId
+             :> Get '[JSON] (OpenAIList Message)
 
 type RunsApi =
   OpenAIAuth :> Capture "thread_id" ThreadId :> "runs" :> ReqBody '[JSON] RunCreate :> Post '[JSON] Run

@@ -115,6 +115,11 @@ module OpenAI.Client
     ThreadId(..),
     createThread,
 
+    -- * Messages (BETA)
+    MessageId(..),
+    Message(..),
+    getMessages,
+
     -- * Runs (BETA)
     Run(..),
     RunCreate(..),
@@ -222,6 +227,11 @@ openaiBaseUrl = BaseUrl Https "api.openai.com" 443 ""
     N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> ARG4 -> m (Either ClientError R);\
     N sc a b c d = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b c d) (mkClientEnv (scManager sc) (scBaseUrl sc))
 
+#define EP5(N, ARG, ARG2, ARG3, ARG4, ARG5, R) \
+    N##' :: Token -> ARG -> ARG2 -> ARG3 -> ARG4 -> ARG5 -> ClientM R;\
+    N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> ARG4 -> ARG5 -> m (Either ClientError R);\
+    N sc a b c d e = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b c d e) (mkClientEnv (scManager sc) (scBaseUrl sc))
+
 EP0 (listModels, (OpenAIList Model))
 EP1 (getModel, ModelId, Model)
 
@@ -288,6 +298,8 @@ EP1 (deleteAssistant, AssistantId, DeleteConfirmation)
 
 EP1 (createThread, ThreadCreate, Thread)
 
+EP5 (getMessages, ThreadId, Maybe Int, Maybe Order, Maybe MessageId, Maybe MessageId, (OpenAIList Message))
+
 EP2 (createRun, ThreadId, RunCreate, Run)
 EP1 (createThreadAndRun, ThreadAndRunCreate, Run)
 EP2 (getRun, ThreadId, RunId, Run)
@@ -324,6 +336,8 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
              :<|> deleteAssistant'
            )
     :<|> ( createThread'
+           )
+    :<|> ( getMessages'
            )
     :<|> ( createRun'
             :<|> createThreadAndRun'
