@@ -125,6 +125,7 @@ module OpenAI.Client
     ThreadAndRunCreate(..),
     createRun,
     createThreadAndRun,
+    getRun,
 
     -- * Fine tunes (out of date)
     FineTuneId (..),
@@ -289,6 +290,7 @@ EP1 (createThread, ThreadCreate, Thread)
 
 EP2 (createRun, ThreadId, RunCreate, Run)
 EP1 (createThreadAndRun, ThreadAndRunCreate, Run)
+EP2 (getRun, ThreadId, RunId, Run)
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
@@ -325,6 +327,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
            )
     :<|> ( createRun'
             :<|> createThreadAndRun'
+            :<|> getRun'
            )
   ) =
     client api
