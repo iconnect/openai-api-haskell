@@ -128,3 +128,8 @@ type EnginesApi =
 
 type AssistantsApi =
   OpenAIAuth :> ReqBody '[JSON] AssistantCreate :> Post '[JSON] Assistant
+    :<|> OpenAIAuth :> QueryParam "limit" Int
+                    :> QueryParam "order" Order
+                    :> QueryParam "after" AssistantId
+                    :> QueryParam "before" AssistantId
+                    :> Get '[JSON] (OpenAIList Assistant)

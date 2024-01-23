@@ -98,9 +98,13 @@ module OpenAI.Client
     EngineEmbedding (..),
     engineCreateEmbedding,
 
-    AssistantCreate(..),
     Assistant(..),
+    AssistantCreate(..),
+    AssistantId(..),
+    AssistantTool(..),
+    Order(..),
     createAssistant,
+    listAssistants,
 
     -- * Fine tunes (out of date)
     FineTuneId (..),
@@ -192,6 +196,11 @@ openaiBaseUrl = BaseUrl Https "api.openai.com" 443 ""
     N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> m (Either ClientError R);\
     N sc a b = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b) (mkClientEnv (scManager sc) (scBaseUrl sc))
 
+#define EP4(N, ARG, ARG2, ARG3, ARG4, R) \
+    N##' :: Token -> ARG -> ARG2 -> ARG3 -> ARG4 -> ClientM R;\
+    N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> ARG4 -> m (Either ClientError R);\
+    N sc a b c d = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b c d) (mkClientEnv (scManager sc) (scBaseUrl sc))
+
 EP0 (listModels, (OpenAIList Model))
 EP1 (getModel, ModelId, Model)
 
@@ -253,6 +262,7 @@ EP2 (engineCompleteText, EngineId, TextCompletionCreate, TextCompletion)
 EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineEmbedding))
 
 EP1 (createAssistant, AssistantCreate, Assistant)
+EP4 (listAssistants, Maybe Int, Maybe Order, Maybe AssistantId, Maybe AssistantId, (OpenAIList Assistant))
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
@@ -282,6 +292,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
              :<|> engineCreateEmbedding'
            )
     :<|> ( createAssistant'
+             :<|> listAssistants'
            )
   ) =
     client api

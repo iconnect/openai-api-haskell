@@ -100,6 +100,9 @@ module OpenAI.Resources
     -- * Assistants (BETA)
     Assistant(..),
     AssistantCreate(..),
+    AssistantId(..),
+    AssistantTool(..),
+    Order(..)
   )
 where
 
@@ -910,6 +913,28 @@ newtype AssistantId = AssistantId {unAssistantId :: T.Text}
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
 
+data AssistantTool =
+    AT_code_interpreter
+  | AT_retrieval
+  | AT_function ChatTool
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON AssistantTool where
+  toJSON = \case
+    AT_code_interpreter -> A.object [ "type" A..= A.String "code_interpreter" ]
+    AT_retrieval        -> A.object [ "type" A..= A.String "retrieval" ]
+    AT_function ct      -> A.toJSON ct
+
+instance FromJSON AssistantTool where
+  parseJSON = A.withObject "AssistantTool" $ \o -> do
+    ty <- o A..: "type"
+    case ty of
+      "code_interpreter" -> pure AT_code_interpreter
+      "retrieval"        -> pure AT_retrieval
+      "function"         -> AT_function <$> A.parseJSON (A.Object o)
+      _                  -> A.typeMismatch ("AssistantTool, invalid type: " <> show ty) ty
+
 data Assistant = Assistant
   { astId :: AssistantId
   , astObject :: T.Text
@@ -918,7 +943,7 @@ data Assistant = Assistant
   , astDescription :: Maybe T.Text
   , astModel :: ModelId
   , astInstructions :: Maybe T.Text
-  , astTools :: [ChatTool]
+  , astTools :: [AssistantTool]
   , astFileIds :: [FileId]
   , astMetadata :: A.Value
   }
@@ -932,7 +957,7 @@ data AssistantCreate = AssistantCreate
   , acrName  :: Maybe T.Text
   , acrDescription :: Maybe T.Text
   , acrInstructions :: Maybe T.Text
-  , acrTools :: Maybe [ChatTool]
+  , acrTools :: Maybe [AssistantTool]
   , acrFileIds :: Maybe [FileId]
   , acrMetadata :: Maybe A.Value
   }
@@ -998,6 +1023,22 @@ data FineTune = FineTune
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
+
+data Order
+  = ORD_asc
+  | ORD_desc
+  deriving stock (Show, Eq, Ord, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+instance ToHttpApiData Order where
+  toQueryParam = \case
+    ORD_asc  -> "asc"
+    ORD_desc -> "desc"
+
+instance FromHttpApiData Order where
+  parseQueryParam "asc"  = Right ORD_asc
+  parseQueryParam "desc" = Right ORD_desc
+  parseQueryParam xs     = Left $ "Invalid sorting " <> xs <> ", allowed values: asc, desc"
 
 $(deriveJSON (jsonOpts 3) ''FineTuneCreate)
 $(deriveJSON (jsonOpts 3) ''FineTuneEvent)
