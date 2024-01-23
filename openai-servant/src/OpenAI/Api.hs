@@ -143,3 +143,6 @@ type ThreadsApi =
 
 type RunsApi =
   OpenAIAuth :> Capture "thread_id" ThreadId :> "runs" :> ReqBody '[JSON] RunCreate :> Post '[JSON] Run
+    :<|> OpenAIAuth :> "threads" :> "runs"
+                    :> ReqBody '[JSON] ThreadAndRunCreate
+                    :> Post '[JSON] Run

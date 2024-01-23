@@ -118,6 +118,7 @@ module OpenAI.Resources
     RunErrorCode(..),
     RunError(..),
     RunStatus(..),
+    ThreadAndRunCreate(..),
   )
 where
 
@@ -1113,17 +1114,31 @@ data Run = Run
 $(deriveJSON (jsonOpts 3) ''Run)
 
 data RunCreate = RunCreate
-  { rcrAssistantId :: AssistantId
-  , rcrModelId     :: Maybe ModelId
-  , rcrInstructions :: Maybe T.Text
+  { rcrAssistantId            :: AssistantId
+  , rcrModel                  :: Maybe ModelId
+  , rcrInstructions           :: Maybe T.Text
   , rcrAdditionalInstructions :: Maybe T.Text
-  , rcrTools :: Maybe [AssistantTool]
-  , rcrMetadata :: Maybe A.Value
+  , rcrTools                  :: Maybe [AssistantTool]
+  , rcrMetadata               :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''RunCreate)
+
+-- | Create a thread and run it in one request.
+data ThreadAndRunCreate = ThreadAndRunCreate
+  { tarcAssistantId  :: AssistantId
+  , tarcThread       :: Maybe Thread
+  , tarcModel        :: Maybe ModelId
+  , tarcInstructions :: Maybe T.Text
+  , tarcTools        :: Maybe [AssistantTool]
+  , tarcMetadata     :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ThreadAndRunCreate)
 
 ------------------------
 ------ Old stuff; not touching
