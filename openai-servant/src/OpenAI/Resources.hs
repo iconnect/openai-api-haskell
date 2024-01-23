@@ -110,6 +110,14 @@ module OpenAI.Resources
     ThreadCreate(..),
     ThreadId(..),
     ThreadMessage(..),
+
+    -- * Runs (BETA)
+    Run(..),
+    RunCreate(..),
+    RunId(..),
+    RunErrorCode(..),
+    RunError(..),
+    RunStatus(..),
   )
 where
 
@@ -1023,6 +1031,99 @@ data ThreadCreate = ThreadCreate
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 4) ''ThreadCreate)
+
+newtype RunId = RunId {unRunId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+data RunStatus =
+    RST_queued
+  | RST_in_progress
+  | RST_requires_action
+  | RST_cancelling
+  | RST_cancelled
+  | RST_failed
+  | RST_completed
+  | RST_expired
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''RunStatus)
+
+data RunErrorCode =
+    REC_server_error
+  | REC_rate_limit_exceeded
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''RunErrorCode)
+
+data RunError = RunError
+  { runeCode    :: RunErrorCode
+  , runeMessage :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''RunError)
+
+data SubmitToolOutputs = SubmitToolOutputs
+  { stoToolCalls    :: [ChatToolCall]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''SubmitToolOutputs)
+
+data RunRequiredAction = RunRequiredAction
+  { rraType    :: T.Text
+  , rraSubmitToolOutputs :: SubmitToolOutputs
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''RunRequiredAction)
+
+-- | A 'Run' object: https://platform.openai.com/docs/api-reference/runs/object
+data Run = Run
+  { runId             :: RunId
+  , runObject         :: T.Text
+  , runCreatedAt      :: Int
+  , runThreadId       :: ThreadId
+  , runAssistantId    :: AssistantId
+  , runStatus         :: RunStatus
+  , runRequiredAction :: Maybe RunRequiredAction
+  , runLastError      :: Maybe RunError
+  , runStartedAt      :: Maybe Int
+  , runExpiresAt      :: Int
+  , runCancelledAt    :: Maybe Int
+  , runFailedAt       :: Maybe Int
+  , runCompletedAt    :: Maybe Int
+  , runModel          :: ModelId
+  , runInstructions   :: T.Text
+  , runTools          :: [AssistantTool]
+  , runFileIds        :: [FileId]
+  , runMetadata       :: Maybe A.Value
+  , runUsage          :: Maybe Usage
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Run)
+
+data RunCreate = RunCreate
+  { rcrAssistantId :: AssistantId
+  , rcrModelId     :: Maybe ModelId
+  , rcrInstructions :: Maybe T.Text
+  , rcrAdditionalInstructions :: Maybe T.Text
+  , rcrTools :: Maybe [AssistantTool]
+  , rcrMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''RunCreate)
 
 ------------------------
 ------ Old stuff; not touching

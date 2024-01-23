@@ -115,6 +115,15 @@ module OpenAI.Client
     ThreadId(..),
     createThread,
 
+    -- * Runs (BETA)
+    Run(..),
+    RunCreate(..),
+    RunId(..),
+    RunErrorCode(..),
+    RunError(..),
+    RunStatus(..),
+    createRun,
+
     -- * Fine tunes (out of date)
     FineTuneId (..),
     FineTuneCreate (..),
@@ -276,6 +285,8 @@ EP1 (deleteAssistant, AssistantId, DeleteConfirmation)
 
 EP1 (createThread, ThreadCreate, Thread)
 
+EP2 (createRun, ThreadId, RunCreate, Run)
+
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
@@ -308,6 +319,8 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
              :<|> deleteAssistant'
            )
     :<|> ( createThread'
+           )
+    :<|> ( createRun'
            )
   ) =
     client api
