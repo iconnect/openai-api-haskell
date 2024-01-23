@@ -12,6 +12,7 @@ module OpenAI.Resources
     TimeStamp (..),
     OpenAIList (..),
     Usage (..),
+    DeleteConfirmation(..),
 
     -- * Models
     Model (..),
@@ -170,6 +171,17 @@ data Usage = Usage
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 2) ''Usage)
+
+-- | Generic delete confirmation
+data DeleteConfirmation = DeleteConfirmation
+  { dcId :: T.Text
+  , dcObject :: T.Text
+  , dcDeleted :: Bool
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''DeleteConfirmation)
 
 ------------------------
 ------ Model API

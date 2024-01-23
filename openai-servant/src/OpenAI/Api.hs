@@ -133,3 +133,5 @@ type AssistantsApi =
                     :> QueryParam "after" AssistantId
                     :> QueryParam "before" AssistantId
                     :> Get '[JSON] (OpenAIList Assistant)
+    :<|> OpenAIAuth :> Capture "assistant_id" AssistantId
+                    :> Delete '[JSON] DeleteConfirmation

@@ -17,6 +17,7 @@ module OpenAI.Client
     TimeStamp (..),
     OpenAIList (..),
     Usage (..),
+    DeleteConfirmation(..),
 
     -- * Models
     Model (..),
@@ -105,6 +106,7 @@ module OpenAI.Client
     Order(..),
     createAssistant,
     listAssistants,
+    deleteAssistant,
 
     -- * Fine tunes (out of date)
     FineTuneId (..),
@@ -263,6 +265,7 @@ EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineE
 
 EP1 (createAssistant, AssistantCreate, Assistant)
 EP4 (listAssistants, Maybe Int, Maybe Order, Maybe AssistantId, Maybe AssistantId, (OpenAIList Assistant))
+EP1 (deleteAssistant, AssistantId, DeleteConfirmation)
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
@@ -293,6 +296,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
            )
     :<|> ( createAssistant'
              :<|> listAssistants'
+             :<|> deleteAssistant'
            )
   ) =
     client api
