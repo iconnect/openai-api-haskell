@@ -144,6 +144,10 @@ type ThreadsApi =
     :<|> OpenAIAuth :> "runs"
                     :> ReqBody '[JSON] ThreadAndRunCreate
                     :> Post '[JSON] Run
+    :<|> OpenAIAuth :> Capture "thread_id" ThreadId
+                    :> "runs"
+                    :> Capture "run_id" RunId
+                    :> Get '[JSON] Run
 
 type MessagesApi =
   OpenAIAuth :> "threads" :> Capture "thread_id" ThreadId :> "messages"
@@ -155,8 +159,3 @@ type MessagesApi =
 
 type RunsApi =
   OpenAIAuth :> Capture "thread_id" ThreadId :> "runs" :> ReqBody '[JSON] RunCreate :> Post '[JSON] Run
-    :<|> OpenAIAuth :> "threads"
-                    :> Capture "thread_id" ThreadId
-                    :> "runs"
-                    :> Capture "run_id" RunId
-                    :> Get '[JSON] Run
