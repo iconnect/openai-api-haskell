@@ -1199,7 +1199,7 @@ $(deriveJSON (jsonOpts 3) ''RunCreate)
 -- | Create a thread and run it in one request.
 data ThreadAndRunCreate = ThreadAndRunCreate
   { tarcAssistantId  :: AssistantId
-  , tarcThread       :: Maybe Thread
+  , tarcThread       :: Maybe ThreadCreate
   , tarcModel        :: Maybe ModelId
   , tarcInstructions :: Maybe T.Text
   , tarcTools        :: Maybe [AssistantTool]
