@@ -122,6 +122,8 @@ module OpenAI.Resources
     RunErrorCode(..),
     RunError(..),
     RunStatus(..),
+    RunRequiredAction(..),
+    SubmitToolOutputs(..),
     ThreadAndRunCreate(..),
   )
 where

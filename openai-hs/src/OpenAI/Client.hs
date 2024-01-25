@@ -127,6 +127,8 @@ module OpenAI.Client
     RunErrorCode(..),
     RunError(..),
     RunStatus(..),
+    RunRequiredAction(..),
+    SubmitToolOutputs(..),
     ThreadAndRunCreate(..),
     createRun,
     createThreadAndRun,
