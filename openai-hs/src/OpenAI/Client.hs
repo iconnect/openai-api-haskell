@@ -338,11 +338,11 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
              :<|> deleteAssistant'
            )
     :<|> ( createThread'
+            :<|> createThreadAndRun'
            )
     :<|> ( getMessages'
            )
     :<|> ( createRun'
-            :<|> createThreadAndRun'
             :<|> getRun'
            )
   ) =
