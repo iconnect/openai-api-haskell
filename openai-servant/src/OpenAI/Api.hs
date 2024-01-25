@@ -148,6 +148,8 @@ type ThreadsApi =
                     :> "runs"
                     :> Capture "run_id" RunId
                     :> Get '[JSON] Run
+    :<|> OpenAIAuth :> Capture "thread_id" ThreadId
+                    :> Delete '[JSON] DeleteConfirmation
 
 type MessagesApi =
   OpenAIAuth :> "threads" :> Capture "thread_id" ThreadId :> "messages"
