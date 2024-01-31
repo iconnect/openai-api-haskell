@@ -36,6 +36,8 @@ module OpenAI.Resources
     ChatCompletionRequest (..),
     ChatChoice (..),
     ChatResponse (..),
+    Seed(..),
+    SystemFingerprint(..),
     ResponseFormat(..),
     defaultChatCompletionRequest,
 
@@ -431,6 +433,16 @@ data ChatToolFunction = ChatToolFunction
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
+-- This feature is in Beta. If specified, our system will make a best effort to
+-- sample deterministically, such that repeated requests with the same seed and
+-- parameters should return the same result. Determinism is not guaranteed, and
+-- you should refer to the system_fingerprint response parameter to monitor
+-- changes in the backend.
+newtype Seed = Seed { unSeed :: Int }
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
     chcrMessages :: [ChatMessage],
@@ -444,6 +456,7 @@ data ChatCompletionRequest = ChatCompletionRequest
     chcrTemperature :: Maybe Double,
     chcrTopP :: Maybe Double,
     chcrN :: Maybe Int,
+    chcrSeed :: Maybe Seed,
     chcrStream :: Maybe Bool,
     chcrStop :: Maybe (V.Vector T.Text),
     chcrMaxTokens :: Maybe Int,
@@ -488,6 +501,7 @@ defaultChatCompletionRequest model messages =
       chcrTemperature = Nothing,
       chcrTopP = Nothing,
       chcrN = Nothing,
+      chcrSeed = Nothing,
       chcrStream = Nothing,
       chcrStop = Nothing,
       chcrMaxTokens = Nothing,
@@ -534,11 +548,21 @@ instance FromJSON ChatChoiceDelta where
         content      <- o A..:? "content"
         pure $ ChatChoiceDelta content functionCall
 
+-- | Represents the backend configuration that the model runs with.
+-- Can be used in conjunction with the seed request parameter to understand
+-- when backend changes have been made that might impact determinism.
+newtype SystemFingerprint = SystemFingerprint { unSystemFingerprint :: T.Text }
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+
 data ChatResponse = ChatResponse
   { chrId :: T.Text,
     chrObject :: T.Text,
     chrCreated :: Int,
     chrChoices :: [ChatChoice],
+    chrSystemFingerprint :: SystemFingerprint,
     chrUsage :: Usage
   } deriving stock Generic
     deriving anyclass NFData
