@@ -1193,7 +1193,7 @@ data Run = Run
   , runRequiredAction :: Maybe RunRequiredAction
   , runLastError      :: Maybe RunError
   , runStartedAt      :: Maybe Int
-  , runExpiresAt      :: Int
+  , runExpiresAt      :: Maybe Int
   , runCancelledAt    :: Maybe Int
   , runFailedAt       :: Maybe Int
   , runCompletedAt    :: Maybe Int
