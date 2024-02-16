@@ -75,7 +75,6 @@ type OpenAIApiInternal =
     :<|> "engines" :> EnginesApi
     :<|> "assistants" :> AssistantsApi
     :<|> "threads" :> ThreadsApi
-    :<|> "messages" :> MessagesApi
     :<|> "runs" :> RunsApi
 
 type ModelsApi =
@@ -150,9 +149,7 @@ type ThreadsApi =
                     :> Get '[JSON] Run
     :<|> OpenAIAuth :> Capture "thread_id" ThreadId
                     :> Delete '[JSON] DeleteConfirmation
-
-type MessagesApi =
-  OpenAIAuth :> "threads" :> Capture "thread_id" ThreadId :> "messages"
+    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "messages"
              :> QueryParam "limit" Int
              :> QueryParam "order" Order
              :> QueryParam "after" MessageId

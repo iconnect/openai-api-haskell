@@ -347,8 +347,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
             :<|> createThreadAndRun'
             :<|> getRun'
             :<|> deleteThread'
-           )
-    :<|> ( getMessages'
+            :<|> getMessages'
            )
     :<|> ( createRun'
            )
