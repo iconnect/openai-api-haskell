@@ -116,6 +116,8 @@ module OpenAI.Resources
     -- * Messages (BETA)
     MessageId(..),
     Message(..),
+    MessageContent(..),
+    TextMessage(..),
 
     -- * Runs (BETA)
     Run(..),
