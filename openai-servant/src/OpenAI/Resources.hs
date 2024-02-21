@@ -997,7 +997,7 @@ instance FromJSON AssistantTool where
 data Assistant = Assistant
   { astId :: AssistantId
   , astObject :: T.Text
-  , astCreatedAt :: Int
+  , astCreatedAt :: TimeStamp
   , astName :: Maybe T.Text
   , astDescription :: Maybe T.Text
   , astModel :: ModelId
@@ -1033,7 +1033,7 @@ newtype ThreadId = ThreadId {unThreadId :: T.Text}
 data Thread = Thread
   { thrId :: ThreadId
   , thrObject :: T.Text
-  , thrCreatedAt :: Int
+  , thrCreatedAt :: TimeStamp
   , thrMetadata :: A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -1121,7 +1121,7 @@ newtype RunId = RunId {unRunId :: T.Text}
 data Message = Message
   { msgId          :: MessageId
   , msgObject      :: T.Text
-  , msgCreatedAt   :: T.Text
+  , msgCreatedAt   :: TimeStamp
   , msgThreadId    :: ThreadId
     -- | The entity that produced the message. One of 'user' or 'assistant'.
   , msgRole        :: T.Text
@@ -1188,17 +1188,17 @@ $(deriveJSON (jsonOpts 3) ''RunRequiredAction)
 data Run = Run
   { runId             :: RunId
   , runObject         :: T.Text
-  , runCreatedAt      :: Int
+  , runCreatedAt      :: TimeStamp
   , runThreadId       :: ThreadId
   , runAssistantId    :: AssistantId
   , runStatus         :: RunStatus
   , runRequiredAction :: Maybe RunRequiredAction
   , runLastError      :: Maybe RunError
-  , runStartedAt      :: Maybe Int
-  , runExpiresAt      :: Maybe Int
-  , runCancelledAt    :: Maybe Int
-  , runFailedAt       :: Maybe Int
-  , runCompletedAt    :: Maybe Int
+  , runStartedAt      :: Maybe TimeStamp
+  , runExpiresAt      :: Maybe TimeStamp
+  , runCancelledAt    :: Maybe TimeStamp
+  , runFailedAt       :: Maybe TimeStamp
+  , runCompletedAt    :: Maybe TimeStamp
   , runModel          :: ModelId
   , runInstructions   :: T.Text
   , runTools          :: [AssistantTool]
