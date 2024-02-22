@@ -146,6 +146,8 @@ type ThreadsApi =
                     :> Capture "run_id" RunId :> Get '[JSON] Run
     :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "runs"
                     :> ReqBody '[JSON] RunCreate :> Post '[JSON] Run
+    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "runs"
+                    :> Capture "run_id" RunId :> "cancel" :> Post '[JSON] Run
     :<|> OpenAIAuth :> Capture "thread_id" ThreadId
                     :> Delete '[JSON] DeleteConfirmation
     :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "messages"

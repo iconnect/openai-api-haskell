@@ -138,6 +138,7 @@ module OpenAI.Client
     createRun,
     createThreadAndRun,
     getRun,
+    cancelRun,
 
     -- * Fine tunes (out of date)
     FineTuneId (..),
@@ -309,6 +310,7 @@ EP1 (deleteThread, ThreadId, DeleteConfirmation)
 EP5 (getMessages, ThreadId, Maybe Int, Maybe Order, Maybe MessageId, Maybe MessageId, (OpenAIList Message))
 
 EP2 (createRun, ThreadId, RunCreate, Run)
+EP2 (cancelRun, ThreadId, RunId, Run)
 EP1 (createThreadAndRun, ThreadAndRunCreate, Run)
 EP2 (getRun, ThreadId, RunId, Run)
 
@@ -347,6 +349,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
             :<|> createThreadAndRun'
             :<|> getRun'
             :<|> createRun'
+            :<|> cancelRun'
             :<|> deleteThread'
             :<|> getMessages'
            )
