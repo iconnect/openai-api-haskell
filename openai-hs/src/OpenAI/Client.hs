@@ -346,10 +346,9 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
     :<|> ( createThread'
             :<|> createThreadAndRun'
             :<|> getRun'
+            :<|> createRun'
             :<|> deleteThread'
             :<|> getMessages'
-           )
-    :<|> ( createRun'
            )
   ) =
     client api
