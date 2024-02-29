@@ -151,8 +151,11 @@ type ThreadsApi =
     :<|> OpenAIAuth :> Capture "thread_id" ThreadId
                     :> Delete '[JSON] DeleteConfirmation
     :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "messages"
-             :> QueryParam "limit" Int
-             :> QueryParam "order" Order
-             :> QueryParam "after" MessageId
-             :> QueryParam "before" MessageId
-             :> Get '[JSON] (OpenAIList Message)
+                    :> QueryParam "limit" Int
+                    :> QueryParam "order" Order
+                    :> QueryParam "after" MessageId
+                    :> QueryParam "before" MessageId
+                    :> Get '[JSON] (OpenAIList Message)
+    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "messages"
+                    :> ReqBody '[JSON] ThreadMessage
+                    :> Post '[JSON] Message

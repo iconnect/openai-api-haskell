@@ -124,6 +124,7 @@ module OpenAI.Client
     MessageContent(..),
     TextMessage(..),
     getMessages,
+    addMessage,
 
     -- * Runs (BETA)
     Run(..),
@@ -308,6 +309,7 @@ EP1 (createThread, ThreadCreate, Thread)
 EP1 (deleteThread, ThreadId, DeleteConfirmation)
 
 EP5 (getMessages, ThreadId, Maybe Int, Maybe Order, Maybe MessageId, Maybe MessageId, (OpenAIList Message))
+EP2 (addMessage, ThreadId, ThreadMessage, Message)
 
 EP2 (createRun, ThreadId, RunCreate, Run)
 EP2 (cancelRun, ThreadId, RunId, Run)
@@ -352,6 +354,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
             :<|> cancelRun'
             :<|> deleteThread'
             :<|> getMessages'
+            :<|> addMessage'
            )
   ) =
     client api
