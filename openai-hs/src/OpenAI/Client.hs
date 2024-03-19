@@ -231,6 +231,11 @@ openaiBaseUrl = BaseUrl Https "api.openai.com" 443 ""
     N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> m (Either ClientError R);\
     N sc a b = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b) (mkClientEnv (scManager sc) (scBaseUrl sc))
 
+#define EP3(N, ARG, ARG2, ARG3, R) \
+    N##' :: Token -> ARG -> ARG2 -> ARG3 -> ClientM R;\
+    N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> m (Either ClientError R);\
+    N sc a b c = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b c) (mkClientEnv (scManager sc) (scBaseUrl sc))
+
 #define EP4(N, ARG, ARG2, ARG3, ARG4, R) \
     N##' :: Token -> ARG -> ARG2 -> ARG3 -> ARG4 -> ClientM R;\
     N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> ARG4 -> m (Either ClientError R);\
@@ -240,6 +245,11 @@ openaiBaseUrl = BaseUrl Https "api.openai.com" 443 ""
     N##' :: Token -> ARG -> ARG2 -> ARG3 -> ARG4 -> ARG5 -> ClientM R;\
     N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> ARG4 -> ARG5 -> m (Either ClientError R);\
     N sc a b c d e = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b c d e) (mkClientEnv (scManager sc) (scBaseUrl sc))
+
+#define EP6(N, ARG, ARG2, ARG3, ARG4, ARG5, ARG6, R) \
+    N##' :: Token -> ARG -> ARG2 -> ARG3 -> ARG4 -> ARG5 -> ARG6 -> ClientM R;\
+    N :: MonadIO m => OpenAIClient -> ARG -> ARG2 -> ARG3 -> ARG4 -> ARG5 -> ARG6 -> m (Either ClientError R);\
+    N sc a b c d e f = liftIO . runRequest (scMaxRetries sc) 0 $ runClientM (N##' (scToken sc) a b c d e f) (mkClientEnv (scManager sc) (scBaseUrl sc))
 
 EP0 (listModels, (OpenAIList Model))
 EP1 (getModel, ModelId, Model)
@@ -301,20 +311,20 @@ EP1 (getEngine, EngineId, Engine)
 EP2 (engineCompleteText, EngineId, TextCompletionCreate, TextCompletion)
 EP2 (engineCreateEmbedding, EngineId, EngineEmbeddingCreate, (OpenAIList EngineEmbedding))
 
-EP1 (createAssistant, AssistantCreate, Assistant)
-EP4 (listAssistants, Maybe Int, Maybe Order, Maybe AssistantId, Maybe AssistantId, (OpenAIList Assistant))
-EP1 (deleteAssistant, AssistantId, DeleteConfirmation)
+EP2 (createAssistant, Maybe String, AssistantCreate, Assistant)
+EP5 (listAssistants, Maybe String, Maybe Int, Maybe Order, Maybe AssistantId, Maybe AssistantId, (OpenAIList Assistant))
+EP2 (deleteAssistant, Maybe String, AssistantId, DeleteConfirmation)
 
-EP1 (createThread, ThreadCreate, Thread)
-EP1 (deleteThread, ThreadId, DeleteConfirmation)
+EP2 (createThread, Maybe String, ThreadCreate, Thread)
+EP2 (deleteThread, Maybe String, ThreadId, DeleteConfirmation)
 
-EP5 (getMessages, ThreadId, Maybe Int, Maybe Order, Maybe MessageId, Maybe MessageId, (OpenAIList Message))
-EP2 (addMessage, ThreadId, ThreadMessage, Message)
+EP6 (getMessages, Maybe String, ThreadId, Maybe Int, Maybe Order, Maybe MessageId, Maybe MessageId, (OpenAIList Message))
+EP3 (addMessage, Maybe String, ThreadId, ThreadMessage, Message)
 
-EP2 (createRun, ThreadId, RunCreate, Run)
-EP2 (cancelRun, ThreadId, RunId, Run)
-EP1 (createThreadAndRun, ThreadAndRunCreate, Run)
-EP2 (getRun, ThreadId, RunId, Run)
+EP3 (createRun, Maybe String, ThreadId, RunCreate, Run)
+EP3 (cancelRun, Maybe String, ThreadId, RunId, Run)
+EP2 (createThreadAndRun, Maybe String, ThreadAndRunCreate, Run)
+EP3 (getRun, Maybe String, ThreadId, RunId, Run)
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'

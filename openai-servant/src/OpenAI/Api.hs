@@ -128,34 +128,49 @@ type EnginesApi =
     :<|> OpenAIAuth :> Capture "engine_id" EngineId :> "embeddings" :> ReqBody '[JSON] EngineEmbeddingCreate :> Post '[JSON] (OpenAIList EngineEmbedding)
 
 type AssistantsApi =
-  OpenAIAuth :> ReqBody '[JSON] AssistantCreate :> Post '[JSON] Assistant
-    :<|> OpenAIAuth :> QueryParam "limit" Int
+         OpenAIAuth :> AzureAPIVer
+                    :> ReqBody '[JSON] AssistantCreate
+                    :> Post '[JSON] Assistant
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> QueryParam "limit" Int
                     :> QueryParam "order" Order
                     :> QueryParam "after" AssistantId
                     :> QueryParam "before" AssistantId
                     :> Get '[JSON] (OpenAIList Assistant)
-    :<|> OpenAIAuth :> Capture "assistant_id" AssistantId
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "assistant_id" AssistantId
                     :> Delete '[JSON] DeleteConfirmation
 
+type AzureAPIVer = QueryParam' '[Optional] "api-version" String
+
 type ThreadsApi =
-  OpenAIAuth :> ReqBody '[JSON] ThreadCreate :> Post '[JSON] Thread
+         OpenAIAuth :> AzureAPIVer
+                    :> ReqBody '[JSON] ThreadCreate
+                    :> Post '[JSON] Thread
     :<|> OpenAIAuth :> "runs"
+                    :> AzureAPIVer
                     :> ReqBody '[JSON] ThreadAndRunCreate
                     :> Post '[JSON] Run
-    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "runs"
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId :> "runs"
                     :> Capture "run_id" RunId :> Get '[JSON] Run
-    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "runs"
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId :> "runs"
                     :> ReqBody '[JSON] RunCreate :> Post '[JSON] Run
-    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "runs"
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId :> "runs"
                     :> Capture "run_id" RunId :> "cancel" :> Post '[JSON] Run
-    :<|> OpenAIAuth :> Capture "thread_id" ThreadId
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId
                     :> Delete '[JSON] DeleteConfirmation
-    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "messages"
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId :> "messages"
                     :> QueryParam "limit" Int
                     :> QueryParam "order" Order
                     :> QueryParam "after" MessageId
                     :> QueryParam "before" MessageId
                     :> Get '[JSON] (OpenAIList Message)
-    :<|> OpenAIAuth :> Capture "thread_id" ThreadId :> "messages"
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId :> "messages"
                     :> ReqBody '[JSON] ThreadMessage
                     :> Post '[JSON] Message
