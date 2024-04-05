@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -cpp -pgmPcpphs -optP--cpp #-}
-{-# OPTIONS_GHC -Wno-orphans               #-}
+{-# OPTIONS_GHC -cpp -pgmP "cpphs --cpp" #-} -- See https://gitlab.haskell.org/ghc/ghc/-/issues/17185#note_327420
+{-# OPTIONS_GHC -Wno-orphans             #-}
 
 module OpenAI.Client
   ( -- * Basics

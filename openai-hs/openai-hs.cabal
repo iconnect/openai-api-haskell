@@ -50,6 +50,8 @@ library
       DeriveGeneric
       DeriveFunctor
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+  build-tools:
+    cpphs>=1.20
   build-depends:
       aeson
     , base >=4.7 && <5
