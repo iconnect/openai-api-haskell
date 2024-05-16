@@ -66,10 +66,11 @@ apiTests2023 =
                     { chmRole = "user",
                       chmContent = Just "What is the opposite of up? Answer in one word.",
                       chmFunctionCall = Nothing,
+                      chmToolCalls = Nothing,
                       chmName = Nothing
                     }
                 ]
-        res <- forceSuccess $ completeChat cli completion
+        res <- forceSuccess $ completeChat cli completion Nothing
         chrChoices res `shouldNotBe` []
         chmContent (chchMessage (head (chrChoices res))) `shouldBe` Just "down."
       it "'content' is a required property" $ \cli -> do
@@ -79,17 +80,19 @@ apiTests2023 =
                 [ ChatMessage
                     { chmRole = "assistant",
                       chmContent = Nothing,
-                      chmFunctionCall = Just $ ChatFunctionCall { chfcName = "f", chfcArguments = "{}" },
+                      chmFunctionCall = Just $ ChatFunctionCall { chfcName = Just "f", chfcArguments = "{}" },
+                      chmToolCalls = Nothing,
                       chmName = Nothing
                     },
                   ChatMessage
                     { chmRole = "function",
                       chmContent = Just "x",
                       chmFunctionCall = Nothing,
+                      chmToolCalls = Nothing,
                       chmName = Just "f"
                     }
                 ]
-        res <- forceSuccess $ completeChat cli completion
+        res <- forceSuccess $ completeChat cli completion Nothing
         chrChoices res `shouldNotBe` []
 
     describe "edits api" $ do

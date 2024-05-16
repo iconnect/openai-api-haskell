@@ -106,6 +106,11 @@ module OpenAI.Resources
     AssistantId(..),
     AssistantTool(..),
     Order(..),
+    VectorStoreId(..),
+    ToolResources(..),
+    CodeInterpreterResources(..),
+    FileSearchResources(..),
+    VectorStoreDescriptor(..),
 
     -- * Threads (BETA)
     Thread(..),
@@ -118,6 +123,7 @@ module OpenAI.Resources
     Message(..),
     MessageContent(..),
     TextMessage(..),
+    MessageAttachment(..),
 
     -- * Runs (BETA)
     Run(..),
@@ -974,7 +980,9 @@ newtype AssistantId = AssistantId {unAssistantId :: T.Text}
 
 data AssistantTool =
     AT_code_interpreter
+  -- | DEPRECATED in version v2 of the assistant API
   | AT_retrieval
+  | AT_file_search
   | AT_function ChatTool
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -983,6 +991,7 @@ instance ToJSON AssistantTool where
   toJSON = \case
     AT_code_interpreter -> A.object [ "type" A..= A.String "code_interpreter" ]
     AT_retrieval        -> A.object [ "type" A..= A.String "retrieval" ]
+    AT_file_search      -> A.object [ "type" A..= A.String "file_search" ]
     AT_function ct      -> A.toJSON ct
 
 instance FromJSON AssistantTool where
@@ -991,8 +1000,49 @@ instance FromJSON AssistantTool where
     case ty of
       "code_interpreter" -> pure AT_code_interpreter
       "retrieval"        -> pure AT_retrieval
+      "file_search"      -> pure AT_file_search
       "function"         -> AT_function <$> A.parseJSON (A.Object o)
       _                  -> A.typeMismatch ("AssistantTool, invalid type: " <> show ty) ty
+
+data CodeInterpreterResources = CodeInterpreterResources
+  { cirFileIds :: Maybe [FileId]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''CodeInterpreterResources)
+
+newtype VectorStoreId = VectorStoreId {unVectorStoreId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+data VectorStoreDescriptor = VectorStoreDescriptor
+  { vsdFileIds  :: Maybe [FileId]
+  , vsdMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''VectorStoreDescriptor)
+
+data FileSearchResources = FileSearchResources
+  { fsrVectorStoreIds :: Maybe [VectorStoreId]
+  , fsrVectorStores   :: Maybe [VectorStoreDescriptor]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''FileSearchResources)
+
+data ToolResources = ToolResources
+  { trsCodeInterpreter :: Maybe CodeInterpreterResources
+  , trsFileSearch      :: Maybe FileSearchResources
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ToolResources)
 
 data Assistant = Assistant
   { astId :: AssistantId
@@ -1003,7 +1053,9 @@ data Assistant = Assistant
   , astModel :: ModelId
   , astInstructions :: Maybe T.Text
   , astTools :: [AssistantTool]
-  , astFileIds :: [FileId]
+  , astToolResources :: Maybe ToolResources
+  -- | DEPRECATED removed in version v2
+  , astFileIds :: Maybe [FileId]
   , astMetadata :: A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -1017,7 +1069,9 @@ data AssistantCreate = AssistantCreate
   , acrDescription :: Maybe T.Text
   , acrInstructions :: Maybe T.Text
   , acrTools :: Maybe [AssistantTool]
+  -- | DEPRECATED: Remove in version v2 of the assistant API
   , acrFileIds :: Maybe [FileId]
+  , acrToolResources :: Maybe ToolResources
   , acrMetadata :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -1034,6 +1088,8 @@ data Thread = Thread
   { thrId :: ThreadId
   , thrObject :: T.Text
   , thrCreatedAt :: TimeStamp
+  , thrToolResources :: Maybe ToolResources
+  , thrTools    :: Maybe AssistantTool
   , thrMetadata :: A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -1041,14 +1097,25 @@ data Thread = Thread
 
 $(deriveJSON (jsonOpts 3) ''Thread)
 
+data MessageAttachment = MessageAttachment
+  { matFileId :: Maybe FileId
+  , matTools  :: Maybe [AssistantTool]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''MessageAttachment)
+
 data ThreadMessage = ThreadMessage
   { -- | Currently only \"user\" is supported.
     thrmRole    :: T.Text
   , thrmContent :: T.Text
-    -- | A list of File IDs that the message should use.
+    -- | DEPRECATED - Removed in version v2
+    -- A list of File IDs that the message should use.
     -- There can be a maximum of 10 files attached to a message.
     -- Useful for tools like retrieval and code_interpreter that can access and use files.
   , thrmFileIds :: Maybe [FileId]
+  , thrmAttachments :: Maybe [MessageAttachment]
   , thrmMetadata :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -1058,6 +1125,7 @@ $(deriveJSON (jsonOpts 4) ''ThreadMessage)
 
 data ThreadCreate = ThreadCreate
   { thrcMessages :: Maybe [ThreadMessage]
+  , thrcToolResources :: Maybe ToolResources
   , thrcMetadata :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -1128,7 +1196,9 @@ data Message = Message
   , msgContent     :: [MessageContent]
   , msgAssistantId :: Maybe AssistantId
   , msgRunId       :: Maybe RunId
-  , msgFileIds     :: [FileId]
+  -- | DEPRECATED removed in version v2
+  , msgFileIds     :: Maybe [FileId]
+  , msgAttachments :: Maybe [MessageAttachment]
   , msgMetadata    :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
