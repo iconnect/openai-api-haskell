@@ -41,7 +41,7 @@ instance HasClient m api => HasClient m (OpenAIAuthProvider '[BearerOrAzureApiKe
     = clientWithRoute m (Proxy :: Proxy api)
     $ req { requestHeaders = (azureHeader, token)
                           <| ("Authorization", bearerHeaderVal)
-                          <| (betaHeader, "assistants=v1")
+                          <| (betaHeader, "assistants=v2")
                           <| requestHeaders req
           }
       where
