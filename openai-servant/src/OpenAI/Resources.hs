@@ -1272,7 +1272,7 @@ data Run = Run
   , runModel          :: ModelId
   , runInstructions   :: T.Text
   , runTools          :: [AssistantTool]
-  , runFileIds        :: [FileId]
+  , runFileIds        :: Maybe [FileId]
   , runMetadata       :: Maybe A.Value
   , runUsage          :: Maybe Usage
   }
