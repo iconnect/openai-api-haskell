@@ -168,6 +168,17 @@ module OpenAI.Client
     FileDeleteConfirmation (..),
     createFile,
     deleteFile,
+
+    -- * Vector Stores
+    VectorStoreCreate(..),
+    VectorStore(..),
+    VectorStoreStatus(..),
+    ChunkingStrategyType(..),
+    ChunkingStrategy(..),
+    ChunkingStrategyStatic(..),
+
+    createVectorStore,
+    deleteVectorStore
   )
 where
 
@@ -332,6 +343,9 @@ EP3 (cancelRun, Maybe String, ThreadId, RunId, Run)
 EP2 (createThreadAndRun, Maybe String, ThreadAndRunCreate, Run)
 EP3 (getRun, Maybe String, ThreadId, RunId, Run)
 
+EP2 (createVectorStore, Maybe String, VectorStoreCreate, VectorStore)
+EP2 (deleteVectorStore, Maybe String, VectorStoreId, DeleteConfirmation)
+
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
@@ -371,6 +385,9 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
             :<|> deleteThread'
             :<|> getMessages'
             :<|> addMessage'
+           )
+    :<|> ( createVectorStore'
+            :<|> deleteVectorStore'
            )
   ) =
     client api

@@ -75,6 +75,7 @@ type OpenAIApiInternal =
     :<|> "engines" :> EnginesApi
     :<|> "assistants" :> AssistantsApi
     :<|> "threads" :> ThreadsApi
+    :<|> "vector_stores" :> VectorStoresApi
 
 type ModelsApi =
   OpenAIAuth :> Get '[JSON] (OpenAIList Model)
@@ -174,3 +175,11 @@ type ThreadsApi =
                     :> Capture "thread_id" ThreadId :> "messages"
                     :> ReqBody '[JSON] ThreadMessage
                     :> Post '[JSON] Message
+
+type VectorStoresApi =
+         OpenAIAuth :> AzureAPIVer
+                    :> ReqBody '[JSON] VectorStoreCreate
+                    :> Post '[JSON] VectorStore
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "vector_store_id" VectorStoreId
+                    :> Delete '[JSON] DeleteConfirmation

@@ -135,6 +135,14 @@ module OpenAI.Resources
     RunRequiredAction(..),
     SubmitToolOutputs(..),
     ThreadAndRunCreate(..),
+
+    -- * Vector Stores
+    VectorStoreCreate(..),
+    VectorStore(..),
+    VectorStoreStatus(..),
+    ChunkingStrategyType(..),
+    ChunkingStrategy(..),
+    ChunkingStrategyStatic(..)
   )
 where
 
@@ -1385,3 +1393,73 @@ instance FromHttpApiData Order where
 $(deriveJSON (jsonOpts 3) ''FineTuneCreate)
 $(deriveJSON (jsonOpts 3) ''FineTuneEvent)
 $(deriveJSON (jsonOpts 2) ''FineTune)
+
+data ChunkingStrategyType
+  = CST_static
+  deriving stock (Show, Eq, Ord, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+instance ToJSON ChunkingStrategyType where
+  toJSON = \case
+    CST_static -> A.String "static"
+
+instance FromJSON ChunkingStrategyType where
+  parseJSON (A.String "static") = pure CST_static
+  parseJSON ty                  = A.typeMismatch ("ChunkingStrategyType, invalid type: " <> show ty) ty
+
+data ChunkingStrategyStatic = ChunkingStrategyStatic
+  { cssMaxChunkSizeTokens :: Int
+  , cssChunkOverlapTokens :: Int
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data ChunkingStrategy = ChunkingStrategy
+  { cstType   :: ChunkingStrategyType
+  , cstStatic :: ChunkingStrategyStatic
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data VectorStoreCreate = VectorStoreCreate
+  { vscFileIds :: Maybe [FileId]
+  , vscName    :: T.Text
+  , vscChunkingStrategy :: Maybe ChunkingStrategy
+  , vscMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data VectorStoreStatus
+  = VSS_expired
+  | VSS_in_progress
+  | VSS_completed
+  deriving stock (Show, Eq, Ord, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+instance ToJSON VectorStoreStatus where
+  toJSON = \case
+    VSS_expired     -> A.String "expired"
+    VSS_in_progress -> A.String "in_progress"
+    VSS_completed   -> A.String "completed"
+
+instance FromJSON VectorStoreStatus where
+  parseJSON (A.String "expired")     = pure VSS_expired
+  parseJSON (A.String "in_progress") = pure VSS_in_progress
+  parseJSON (A.String "completed")   = pure VSS_completed
+  parseJSON ty                       = A.typeMismatch ("VectorStoreStatus, invalid type: " <> show ty) ty
+
+data VectorStore = VectorStore
+  { vstId        :: VectorStoreId
+  , vstObject    :: T.Text
+  , vstCreatedAt :: TimeStamp
+  , vstName      :: T.Text
+  , vstStatus    :: VectorStoreStatus
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ChunkingStrategyStatic)
+$(deriveJSON (jsonOpts 3) ''ChunkingStrategy)
+$(deriveJSON (jsonOpts 3) ''VectorStore)
+$(deriveJSON (jsonOpts 3) ''VectorStoreCreate)
