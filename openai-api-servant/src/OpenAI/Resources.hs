@@ -39,6 +39,7 @@ module OpenAI.Resources
     Seed(..),
     SystemFingerprint(..),
     ResponseFormat(..),
+    ResponseFormatSchema(..),
     defaultChatCompletionRequest,
 
     -- * Chat streaming
@@ -488,12 +489,27 @@ data ChatCompletionRequest = ChatCompletionRequest
 data ResponseFormat
   = RF_text
   | RF_json_object
+  | RF_json_schema ResponseFormatSchema
   deriving (Show, Eq)
+
+data ResponseFormatSchema = ResponseFormatSchema
+  { rfsName   :: T.Text
+  , rfsStrict :: Bool
+  , rfsSchema :: A.Value
+  } deriving (Show, Eq)
+
+$(deriveJSON (jsonOpts 3) ''ResponseFormatSchema)
 
 instance ToJSON ResponseFormat where
   toJSON = \case
-    RF_text        -> A.object [ "type" A..= A.String "text" ]
-    RF_json_object -> A.object [ "type" A..= A.String "json_object" ]
+    RF_text
+      -> A.object [ "type" A..= A.String "text" ]
+    RF_json_object
+      -> A.object [ "type" A..= A.String "json_object" ]
+    RF_json_schema schema
+      -> A.object [ "type" A..= A.String "json_schema"
+                  , "json_schema" A..= schema
+                  ]
 
 instance FromJSON ResponseFormat where
   parseJSON = A.withObject "ResponseFormat" $ \o -> do
@@ -503,6 +519,10 @@ instance FromJSON ResponseFormat where
         -> pure RF_text
       "json_object"
         -> pure RF_json_object
+      "json_schema"
+        -> do
+          s <- o A..: "json_schema"
+          pure $ RF_json_schema s
       xs
         -> fail $ "ResponseFormat unexpected type: " <> T.unpack xs
 
