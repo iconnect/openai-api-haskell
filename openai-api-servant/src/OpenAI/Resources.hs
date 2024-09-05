@@ -443,7 +443,8 @@ data ChatTool = ChatTool
 
 data ChatToolFunction = ChatToolFunction
   { chtfDescription :: Maybe T.Text,
-    chtfName :: T.Text,
+    chtfName   :: T.Text,
+    chtfStrict :: Maybe Bool,
     chtfParameters :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
