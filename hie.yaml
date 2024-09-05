@@ -1,10 +1,10 @@
 cradle:
-  stack:
-    stackYaml: "stack.yaml"
-    components:
-      - path: "./openai-servant/src"
-        component: "openai-servant:lib"
-      - path: "./openai-hs/src"
-        component: "openai-hs:lib"
-      - path: "./openai-hs/test"
-        component: "openai-hs:test:openai-hs-test"
+  cabal:
+    - path: "openai-api/src"
+      component: "lib:openai-api"
+
+    - path: "openai-api/test"
+      component: "openai-api:test:openai-api-test"
+
+    - path: "openai-api-servant/src"
+      component: "lib:openai-api-servant"

@@ -4,25 +4,26 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           openai-servant
+name:           openai-api-servant
 version:        0.3.0.1
 synopsis:       Unofficial OpenAI servant types
 description:    Unofficial description of the OpenAI API using servant types
 category:       Web
-homepage:       https://github.com/agrafix/openai-hs#readme
-bug-reports:    https://github.com/agrafix/openai-hs/issues
+homepage:       https://github.com/iconnect/openai-api#readme
+bug-reports:    https://github.com/iconnect/openai-api/issues
 author:         Alexander Thiemann <mail@thiemann.at>
 maintainer:     Alexander Thiemann <mail@thiemann.at>
-copyright:      2021-2023 Alexander Thiemann <mail@thiemann.at>
+copyright:      2021-2023 Alexander Thiemann <mail@thiemann.at>, 2024 IRIS Connect Engineering Team
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
+tested-with:    GHC == 9.4.7 || == 9.6.6
 extra-source-files:
     README.md
 
 source-repository head
   type: git
-  location: https://github.com/agrafix/openai-hs
+  location: https://github.com/iconnect/openai-api
 
 library
   exposed-modules:
@@ -30,7 +31,7 @@ library
       OpenAI.Internal.Aeson
       OpenAI.Resources
   other-modules:
-      Paths_openai_servant
+      Paths_openai_api_servant
   hs-source-dirs:
       src
   default-extensions:

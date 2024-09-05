@@ -12,13 +12,13 @@ echo "Bumping version to $VERSION ..."
 
 find . -name 'package.yaml' -type f -exec sed -i '' "s/^version:.*/version:             $VERSION/g" {} +
 
-stack build --fast --pedantic
+cabal v2-build all
 
 git add .
 git commit -m "version bump"
 
-stack upload openai-hs
-stack upload openai-servant
+cabal upload openai-api
+cabal upload openai-api-servant
 
 git tag -a "$VERSION" -m "Hackage version $VERSION"
 git push
