@@ -129,8 +129,8 @@ jobs:
       - name: initial cabal.project for sdist
         run: |
           touch cabal.project
-          echo "packages: $GITHUB_WORKSPACE/source/openai-hs" >> cabal.project
-          echo "packages: $GITHUB_WORKSPACE/source/openai-servant" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/openai-api" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/openai-api-servant" >> cabal.project
           cat cabal.project
       - name: sdist
         run: |
@@ -142,18 +142,18 @@ jobs:
           find sdist -maxdepth 1 -type f -name '*.tar.gz' -exec tar -C $GITHUB_WORKSPACE/unpacked -xzvf {} \;
       - name: generate cabal.project
         run: |
-          PKGDIR_openai_hs="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/openai-hs-[0-9.]*')"
-          echo "PKGDIR_openai_hs=${PKGDIR_openai_hs}" >> "$GITHUB_ENV"
-          PKGDIR_openai_servant="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/openai-servant-[0-9.]*')"
-          echo "PKGDIR_openai_servant=${PKGDIR_openai_servant}" >> "$GITHUB_ENV"
+          PKGDIR_openai_api="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/openai-api-[0-9.]*')"
+          echo "PKGDIR_openai_api=${PKGDIR_openai_api}" >> "$GITHUB_ENV"
+          PKGDIR_openai_api_servant="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/openai-api-servant-[0-9.]*')"
+          echo "PKGDIR_openai_api_servant=${PKGDIR_openai_api_servant}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
-          echo "packages: ${PKGDIR_openai_hs}" >> cabal.project
-          echo "packages: ${PKGDIR_openai_servant}" >> cabal.project
-          echo "package openai-hs" >> cabal.project
+          echo "packages: ${PKGDIR_openai_api}" >> cabal.project
+          echo "packages: ${PKGDIR_openai_api_servant}" >> cabal.project
+          echo "package openai-api" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
-          echo "package openai-servant" >> cabal.project
+          echo "package openai-api-servant" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
           allow-newer: servant-event-stream:lens
@@ -163,7 +163,7 @@ jobs:
             location: git@github.com:iconnect/servant-event-stream.git
             tag:      d9769b29d046dc0a95d2a7ae8a81ade685063e16
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(openai-hs|openai-servant)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(openai-api|openai-api-servant)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -191,9 +191,9 @@ jobs:
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
       - name: cabal check
         run: |
-          cd ${PKGDIR_openai_hs} || false
+          cd ${PKGDIR_openai_api} || false
           ${CABAL} -vnormal check
-          cd ${PKGDIR_openai_servant} || false
+          cd ${PKGDIR_openai_api_servant} || false
           ${CABAL} -vnormal check
       - name: haddock
         run: |
