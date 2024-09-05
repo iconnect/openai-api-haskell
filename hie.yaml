@@ -1,2 +1,10 @@
 cradle:
   cabal:
+    - path: "openai-api/src"
+      component: "lib:openai-api"
+
+    - path: "openai-api/test"
+      component: "openai-api:test:openai-api-test"
+
+    - path: "openai-api-servant/src"
+      component: "lib:openai-api-servant"
