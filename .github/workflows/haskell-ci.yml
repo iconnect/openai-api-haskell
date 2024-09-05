@@ -156,12 +156,10 @@ jobs:
           echo "package openai-api-servant" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
-          allow-newer: servant-event-stream:lens
-
           source-repository-package
             type:     git
-            location: git@github.com:iconnect/servant-event-stream.git
-            tag:      d9769b29d046dc0a95d2a7ae8a81ade685063e16
+            location: https://github.com/iconnect/servant-event-stream.git
+            tag:      ceb7a62e072991be1289055ba1ab255e1d424791
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(openai-api|openai-api-servant)$/; }' >> cabal.project.local
           cat cabal.project
