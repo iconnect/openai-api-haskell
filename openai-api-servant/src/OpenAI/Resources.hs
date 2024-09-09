@@ -412,7 +412,8 @@ data ChatToolChoiceStrategy =
     CFTS_auto
   | CFTS_none
   | CFTS_function T.Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+  deriving anyclass NFData
 
 instance ToJSON ChatToolChoiceStrategy where
   toJSON = \case
@@ -490,13 +491,15 @@ data ResponseFormat
   = RF_text
   | RF_json_object
   | RF_json_schema ResponseFormatSchema
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+  deriving anyclass NFData
 
 data ResponseFormatSchema = ResponseFormatSchema
   { rfsName   :: T.Text
   , rfsStrict :: Bool
   , rfsSchema :: A.Value
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic)
+    deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''ResponseFormatSchema)
 
@@ -1317,6 +1320,8 @@ data RunCreate = RunCreate
   , rcrAdditionalInstructions :: Maybe T.Text
   , rcrTools                  :: Maybe [AssistantTool]
   , rcrMetadata               :: Maybe A.Value
+  , rcrToolChoice             :: Maybe ChatToolChoiceStrategy
+  , rcrResponseFormat         :: Maybe ResponseFormat
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
