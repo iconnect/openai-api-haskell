@@ -1321,6 +1321,7 @@ data RunCreate = RunCreate
   , rcrTools                  :: Maybe [AssistantTool]
   , rcrMetadata               :: Maybe A.Value
   , rcrToolChoice             :: Maybe ChatToolChoiceStrategy
+  , rcrParallelToolCalls      :: Maybe Bool
   , rcrResponseFormat         :: Maybe ResponseFormat
   }
   deriving stock (Show, Eq, Generic)
