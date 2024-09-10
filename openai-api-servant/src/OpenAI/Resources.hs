@@ -39,6 +39,7 @@ module OpenAI.Resources
     Seed(..),
     SystemFingerprint(..),
     ResponseFormat(..),
+    ResponseFormatSchema(..),
     defaultChatCompletionRequest,
 
     -- * Chat streaming
@@ -411,7 +412,8 @@ data ChatToolChoiceStrategy =
     CFTS_auto
   | CFTS_none
   | CFTS_function T.Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+  deriving anyclass NFData
 
 instance ToJSON ChatToolChoiceStrategy where
   toJSON = \case
@@ -443,7 +445,8 @@ data ChatTool = ChatTool
 
 data ChatToolFunction = ChatToolFunction
   { chtfDescription :: Maybe T.Text,
-    chtfName :: T.Text,
+    chtfName   :: T.Text,
+    chtfStrict :: Maybe Bool,
     chtfParameters :: Maybe A.Value
   }
   deriving stock (Show, Eq, Generic)
@@ -487,12 +490,29 @@ data ChatCompletionRequest = ChatCompletionRequest
 data ResponseFormat
   = RF_text
   | RF_json_object
-  deriving (Show, Eq)
+  | RF_json_schema ResponseFormatSchema
+  deriving (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data ResponseFormatSchema = ResponseFormatSchema
+  { rfsName   :: T.Text
+  , rfsStrict :: Bool
+  , rfsSchema :: A.Value
+  } deriving (Show, Eq, Generic)
+    deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseFormatSchema)
 
 instance ToJSON ResponseFormat where
   toJSON = \case
-    RF_text        -> A.object [ "type" A..= A.String "text" ]
-    RF_json_object -> A.object [ "type" A..= A.String "json_object" ]
+    RF_text
+      -> A.object [ "type" A..= A.String "text" ]
+    RF_json_object
+      -> A.object [ "type" A..= A.String "json_object" ]
+    RF_json_schema schema
+      -> A.object [ "type" A..= A.String "json_schema"
+                  , "json_schema" A..= schema
+                  ]
 
 instance FromJSON ResponseFormat where
   parseJSON = A.withObject "ResponseFormat" $ \o -> do
@@ -502,6 +522,10 @@ instance FromJSON ResponseFormat where
         -> pure RF_text
       "json_object"
         -> pure RF_json_object
+      "json_schema"
+        -> do
+          s <- o A..: "json_schema"
+          pure $ RF_json_schema s
       xs
         -> fail $ "ResponseFormat unexpected type: " <> T.unpack xs
 
@@ -1296,6 +1320,9 @@ data RunCreate = RunCreate
   , rcrAdditionalInstructions :: Maybe T.Text
   , rcrTools                  :: Maybe [AssistantTool]
   , rcrMetadata               :: Maybe A.Value
+  , rcrToolChoice             :: Maybe ChatToolChoiceStrategy
+  , rcrParallelToolCalls      :: Maybe Bool
+  , rcrResponseFormat         :: Maybe ResponseFormat
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
