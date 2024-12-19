@@ -1520,6 +1520,7 @@ data VectorStore = VectorStore
   , vstObject    :: T.Text
   , vstCreatedAt :: TimeStamp
   , vstName      :: T.Text
+  , vstExpiresAt :: Maybe TimeStamp
   , vstStatus    :: VectorStoreStatus
   }
   deriving stock (Show, Eq, Generic)
