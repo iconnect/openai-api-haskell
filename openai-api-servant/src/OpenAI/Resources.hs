@@ -1042,9 +1042,10 @@ instance ToJSON AssistantTool where
   toJSON = \case
     AT_code_interpreter -> A.object [ "type" A..= A.String "code_interpreter" ]
     AT_retrieval        -> A.object [ "type" A..= A.String "retrieval" ]
-    AT_file_search opts -> A.object [ "type" A..= A.String "file_search"
-                                    , "file_search" A..= A.toJSON opts
-                                    ]
+    AT_file_search Nothing -> A.object [ "type" A..= A.String "file_search" ]
+    AT_file_search (Just opts) -> A.object [ "type" A..= A.String "file_search"
+                                           , "file_search" A..= A.toJSON opts
+                                           ]
     AT_function ct      -> A.toJSON ct
 
 instance FromJSON AssistantTool where
