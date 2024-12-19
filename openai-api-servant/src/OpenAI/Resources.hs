@@ -145,7 +145,8 @@ module OpenAI.Resources
     ChunkingStrategy(..),
     ChunkingStrategyStatic(..),
     ExpiresAfter(..),
-    FileSearchOptions(..)
+    FileSearchOptions(..),
+    RankingOptions(..)
   )
 where
 
