@@ -1318,6 +1318,7 @@ data RunCreate = RunCreate
   , rcrModel                  :: Maybe ModelId
   , rcrInstructions           :: Maybe T.Text
   , rcrAdditionalInstructions :: Maybe T.Text
+  , rcrAdditionalMessages     :: Maybe [ThreadMessage]
   , rcrTools                  :: Maybe [AssistantTool]
   , rcrMetadata               :: Maybe A.Value
   , rcrToolChoice             :: Maybe ChatToolChoiceStrategy
