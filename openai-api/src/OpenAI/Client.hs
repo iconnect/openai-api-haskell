@@ -177,6 +177,7 @@ module OpenAI.Client
     ChunkingStrategyType(..),
     ChunkingStrategy(..),
     ChunkingStrategyStatic(..),
+    ExpiresAfter(..),
 
     createVectorStore,
     deleteVectorStore

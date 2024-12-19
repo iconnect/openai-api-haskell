@@ -143,7 +143,8 @@ module OpenAI.Resources
     VectorStoreStatus(..),
     ChunkingStrategyType(..),
     ChunkingStrategy(..),
-    ChunkingStrategyStatic(..)
+    ChunkingStrategyStatic(..),
+    ExpiresAfter(..)
   )
 where
 
@@ -1010,11 +1011,28 @@ newtype AssistantId = AssistantId {unAssistantId :: T.Text}
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
 
+data RankingOptions = RankingOptions
+  { ropRanker :: Maybe String
+  , ropScoreThreshold :: Maybe Double
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data FileSearchOptions = FileSearchOptions
+  { fsoMaxNumResults :: Maybe Int
+  , fsoRankingOptions :: Maybe RankingOptions
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''RankingOptions)
+$(deriveJSON (jsonOpts 3) ''FileSearchOptions)
+
 data AssistantTool =
     AT_code_interpreter
   -- | DEPRECATED in version v2 of the assistant API
   | AT_retrieval
-  | AT_file_search
+  | AT_file_search (Maybe FileSearchOptions)
   | AT_function ChatTool
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -1023,7 +1041,9 @@ instance ToJSON AssistantTool where
   toJSON = \case
     AT_code_interpreter -> A.object [ "type" A..= A.String "code_interpreter" ]
     AT_retrieval        -> A.object [ "type" A..= A.String "retrieval" ]
-    AT_file_search      -> A.object [ "type" A..= A.String "file_search" ]
+    AT_file_search opts -> A.object [ "type" A..= A.String "file_search"
+                                    , "file_search" A..= A.toJSON opts
+                                    ]
     AT_function ct      -> A.toJSON ct
 
 instance FromJSON AssistantTool where
@@ -1032,7 +1052,7 @@ instance FromJSON AssistantTool where
     case ty of
       "code_interpreter" -> pure AT_code_interpreter
       "retrieval"        -> pure AT_retrieval
-      "file_search"      -> pure AT_file_search
+      "file_search"      -> AT_file_search <$> (o A..: "file_search")
       "function"         -> AT_function <$> A.parseJSON (A.Object o)
       _                  -> A.typeMismatch ("AssistantTool, invalid type: " <> show ty) ty
 
@@ -1449,8 +1469,26 @@ data ChunkingStrategy = ChunkingStrategy
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
+data ExpiresAfter = ExpiresAfter
+  { exaAnchor :: T.Text
+  , exaDays   :: Int
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+data VectorStoreFileCreate = VectorStoreFileCreate
+  { vsfcFileIds :: Maybe [FileId]
+  , vsfcExpiresAfter :: Maybe ExpiresAfter
+  , vsfcName    :: T.Text
+  , vsfcChunkingStrategy :: Maybe ChunkingStrategy
+  , vsfcMetadata :: Maybe A.Value
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
 data VectorStoreCreate = VectorStoreCreate
   { vscFileIds :: Maybe [FileId]
+  , vscExpiresAfter :: Maybe ExpiresAfter
   , vscName    :: T.Text
   , vscChunkingStrategy :: Maybe ChunkingStrategy
   , vscMetadata :: Maybe A.Value
@@ -1490,4 +1528,5 @@ data VectorStore = VectorStore
 $(deriveJSON (jsonOpts 3) ''ChunkingStrategyStatic)
 $(deriveJSON (jsonOpts 3) ''ChunkingStrategy)
 $(deriveJSON (jsonOpts 3) ''VectorStore)
+$(deriveJSON (jsonOpts 3) ''ExpiresAfter)
 $(deriveJSON (jsonOpts 3) ''VectorStoreCreate)
