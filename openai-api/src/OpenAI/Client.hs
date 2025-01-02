@@ -142,10 +142,13 @@ module OpenAI.Client
     RunStatus(..),
     RunRequiredAction(..),
     SubmitToolOutputs(..),
+    ToolOutput(..),
+    ToolOutputs(..),
     ThreadAndRunCreate(..),
     createRun,
     createThreadAndRun,
     getRun,
+    submitToolOutputs,
     cancelRun,
 
     -- * Fine tunes (out of date)
@@ -346,6 +349,7 @@ EP3 (createRun, Maybe String, ThreadId, RunCreate, Run)
 EP3 (cancelRun, Maybe String, ThreadId, RunId, Run)
 EP2 (createThreadAndRun, Maybe String, ThreadAndRunCreate, Run)
 EP3 (getRun, Maybe String, ThreadId, RunId, Run)
+EP4 (submitToolOutputs, Maybe String, ThreadId, RunId, ToolOutputs, Run)
 
 EP2 (createVectorStore, Maybe String, VectorStoreCreate, VectorStore)
 EP2 (deleteVectorStore, Maybe String, VectorStoreId, DeleteConfirmation)
@@ -384,6 +388,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
     :<|> ( createThread'
             :<|> createThreadAndRun'
             :<|> getRun'
+            :<|> submitToolOutputs'
             :<|> createRun'
             :<|> cancelRun'
             :<|> deleteThread'

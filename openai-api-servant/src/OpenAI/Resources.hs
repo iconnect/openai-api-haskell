@@ -135,6 +135,8 @@ module OpenAI.Resources
     RunStatus(..),
     RunRequiredAction(..),
     SubmitToolOutputs(..),
+    ToolOutput(..),
+    ToolOutputs(..),
     ThreadAndRunCreate(..),
 
     -- * Vector Stores
@@ -1352,6 +1354,23 @@ data RunCreate = RunCreate
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''RunCreate)
+
+data ToolOutput = ToolOutput
+  { toToolCallId :: Maybe T.Text
+  , toOutput     :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ToolOutput)
+
+data ToolOutputs = ToolOutputs
+  { tosToolOutputs :: [ToolOutput]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ToolOutputs)
 
 -- | Create a thread and run it in one request.
 data ThreadAndRunCreate = ThreadAndRunCreate
