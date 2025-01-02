@@ -1057,7 +1057,7 @@ instance FromJSON AssistantTool where
     case ty of
       "code_interpreter" -> pure AT_code_interpreter
       "retrieval"        -> pure AT_retrieval
-      "file_search"      -> AT_file_search <$> (o A..: "file_search")
+      "file_search"      -> AT_file_search <$> (o A..:? "file_search")
       "function"         -> AT_function <$> A.parseJSON (A.Object o)
       _                  -> A.typeMismatch ("AssistantTool, invalid type: " <> show ty) ty
 
