@@ -157,6 +157,11 @@ type ThreadsApi =
                     :> Capture "run_id" RunId :> Get '[JSON] Run
     :<|> OpenAIAuth :> AzureAPIVer
                     :> Capture "thread_id" ThreadId :> "runs"
+                    :> Capture "run_id" RunId :> "submit_tool_outputs"
+                    :> ReqBody '[JSON] ToolOutputs
+                    :> Post '[JSON] Run
+    :<|> OpenAIAuth :> AzureAPIVer
+                    :> Capture "thread_id" ThreadId :> "runs"
                     :> ReqBody '[JSON] RunCreate :> Post '[JSON] Run
     :<|> OpenAIAuth :> AzureAPIVer
                     :> Capture "thread_id" ThreadId :> "runs"
