@@ -1266,7 +1266,8 @@ data Message = Message
   , msgObject      :: T.Text
   , msgCreatedAt   :: TimeStamp
   , msgThreadId    :: ThreadId
-  , msgStatus      :: MessageStatus
+  -- | NOTE(adn) Unfortunately this field doesn't always appear..
+  , msgStatus      :: Maybe MessageStatus
   , msgIncompleteDetails :: Maybe IncompleteDetails
   , msgCompletedAt :: Maybe TimeStamp
   , msgIncompleteAt :: Maybe TimeStamp
