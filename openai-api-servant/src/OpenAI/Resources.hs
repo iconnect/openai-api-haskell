@@ -122,6 +122,8 @@ module OpenAI.Resources
     -- * Messages (BETA)
     MessageId(..),
     Message(..),
+    MessageStatus(..),
+    IncompleteDetails(..),
     MessageContent(..),
     TextMessage(..),
     MessageAttachment(..),
@@ -1242,12 +1244,32 @@ newtype RunId = RunId {unRunId :: T.Text}
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
 
+data MessageStatus =
+    MST_in_progress
+  | MST_completed
+  | MST_incomplete
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''MessageStatus)
+
+newtype IncompleteDetails =
+    IncompleteDetails { inc_reason :: T.Text }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''IncompleteDetails)
+
 -- | A 'Message' object https://platform.openai.com/docs/api-reference/messages/object
 data Message = Message
   { msgId          :: MessageId
   , msgObject      :: T.Text
   , msgCreatedAt   :: TimeStamp
   , msgThreadId    :: ThreadId
+  , msgStatus      :: MessageStatus
+  , msgIncompleteDetails :: Maybe IncompleteDetails
+  , msgCompletedAt :: Maybe TimeStamp
+  , msgIncompleteAt :: Maybe TimeStamp
     -- | The entity that produced the message. One of 'user' or 'assistant'.
   , msgRole        :: T.Text
   , msgContent     :: [MessageContent]

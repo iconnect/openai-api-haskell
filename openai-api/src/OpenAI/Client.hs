@@ -127,6 +127,8 @@ module OpenAI.Client
     -- * Messages (BETA)
     MessageId(..),
     Message(..),
+    MessageStatus(..),
+    IncompleteDetails(..),
     MessageContent(..),
     TextMessage(..),
     MessageAttachment(..),
