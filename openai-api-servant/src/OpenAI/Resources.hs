@@ -40,6 +40,7 @@ module OpenAI.Resources
     SystemFingerprint(..),
     ResponseFormat(..),
     ResponseFormatSchema(..),
+    ReasoningEffort(..),
     defaultChatCompletionRequest,
 
     -- * Chat streaming
@@ -467,9 +468,20 @@ newtype Seed = Seed { unSeed :: Int }
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
 
+data ReasoningEffort =
+    RE_low
+  | RE_medium
+  | RE_high
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ReasoningEffort)
+
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
     chcrMessages :: [ChatMessage],
+    chcrStore :: Maybe Bool,
+    chcrReasoningEffort :: Maybe ReasoningEffort,
     -- | A list of functions the model may generate JSON inputs for.
     -- /Deprecated/ by OpenAI in favour of \"tools\".
     chcrFunctions :: Maybe [ChatFunction],
@@ -483,11 +495,14 @@ data ChatCompletionRequest = ChatCompletionRequest
     chcrSeed :: Maybe Seed,
     chcrStream :: Maybe Bool,
     chcrStop :: Maybe (V.Vector T.Text),
+    -- | DEPRECATED: Please use chcrMaxCompletionTokens
     chcrMaxTokens :: Maybe Int,
+    chcrMaxCompletionTokens :: Maybe Int,
     chcrPresencePenalty :: Maybe Double,
     chcrResponseFormat :: Maybe ResponseFormat,
     chcrFrequencyPenalty :: Maybe Double,
     chcrLogitBias :: Maybe (V.Vector Double),
+    chcrParallelToolCalls :: Maybe Bool,
     chcrUser :: Maybe String
   }
   deriving (Show, Eq)
@@ -539,6 +554,8 @@ defaultChatCompletionRequest model messages =
   ChatCompletionRequest
     { chcrModel = model,
       chcrMessages = messages,
+      chcrStore = Nothing,
+      chcrReasoningEffort = Nothing,
       chcrFunctions = Nothing,
       chcrFunctionCall = Nothing,
       chcrToolChoice = Nothing,
@@ -550,11 +567,13 @@ defaultChatCompletionRequest model messages =
       chcrStream = Nothing,
       chcrStop = Nothing,
       chcrMaxTokens = Nothing,
+      chcrMaxCompletionTokens = Nothing,
       chcrPresencePenalty = Nothing,
       chcrResponseFormat = Nothing,
       chcrFrequencyPenalty = Nothing,
       chcrLogitBias = Nothing,
-      chcrUser = Nothing
+      chcrUser = Nothing,
+      chcrParallelToolCalls = Nothing
     }
 
 data ChatChoice = ChatChoice
