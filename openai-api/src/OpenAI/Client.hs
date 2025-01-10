@@ -48,6 +48,7 @@ module OpenAI.Client
     SystemFingerprint(..),
     ResponseFormat(..),
     ResponseFormatSchema(..),
+    ReasoningEffort(..),
     defaultChatCompletionRequest,
     completeChat,
     completeChatStreaming,
