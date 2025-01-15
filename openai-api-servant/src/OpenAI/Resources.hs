@@ -475,7 +475,7 @@ data ReasoningEffort =
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
-$(deriveJSON (jsonOpts 3) ''ReasoningEffort)
+$(deriveJSON (jsonEnumsOpts 3) ''ReasoningEffort)
 
 data ChatCompletionRequest = ChatCompletionRequest
   { chcrModel :: ModelId,
