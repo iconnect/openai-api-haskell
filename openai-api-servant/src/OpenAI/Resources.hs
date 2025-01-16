@@ -1291,6 +1291,7 @@ data RunStatus =
   | RST_failed
   | RST_completed
   | RST_expired
+  | RST_incomplete
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
@@ -1330,6 +1331,15 @@ data RunRequiredAction = RunRequiredAction
 
 $(deriveJSON (jsonOpts 3) ''RunRequiredAction)
 
+newtype IncompleteDetails
+  = IncompleteDetails
+  { _id_reason :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''IncompleteDetails)
+
 -- | A 'Run' object: https://platform.openai.com/docs/api-reference/runs/object
 data Run = Run
   { runId             :: RunId
@@ -1347,6 +1357,7 @@ data Run = Run
   , runCompletedAt    :: Maybe TimeStamp
   , runModel          :: ModelId
   , runInstructions   :: T.Text
+  , runIncompleteDetails :: Maybe IncompleteDetails
   , runTools          :: [AssistantTool]
   , runFileIds        :: Maybe [FileId]
   , runMetadata       :: Maybe A.Value
