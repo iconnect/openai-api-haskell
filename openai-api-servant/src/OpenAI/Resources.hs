@@ -136,6 +136,7 @@ module OpenAI.Resources
     RunStatus(..),
     RunRequiredAction(..),
     SubmitToolOutputs(..),
+    IncompleteDetails(..),
     ToolOutput(..),
     ToolOutputs(..),
     ThreadAndRunCreate(..),

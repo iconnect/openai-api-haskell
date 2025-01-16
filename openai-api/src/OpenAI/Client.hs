@@ -144,6 +144,7 @@ module OpenAI.Client
     RunStatus(..),
     RunRequiredAction(..),
     SubmitToolOutputs(..),
+    IncompleteDetails(..),
     ToolOutput(..),
     ToolOutputs(..),
     ThreadAndRunCreate(..),
