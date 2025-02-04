@@ -1378,6 +1378,7 @@ data RunCreate = RunCreate
   , rcrAdditionalMessages     :: Maybe [ThreadMessage]
   , rcrTools                  :: Maybe [AssistantTool]
   , rcrMetadata               :: Maybe A.Value
+  , rcrTemperature            :: Maybe Double
   , rcrToolChoice             :: Maybe ChatToolChoiceStrategy
   , rcrParallelToolCalls      :: Maybe Bool
   , rcrResponseFormat         :: Maybe ResponseFormat
