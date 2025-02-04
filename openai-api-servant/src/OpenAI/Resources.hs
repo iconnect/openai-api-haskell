@@ -1372,6 +1372,7 @@ $(deriveJSON (jsonOpts 3) ''Run)
 data RunCreate = RunCreate
   { rcrAssistantId            :: AssistantId
   , rcrModel                  :: Maybe ModelId
+  , rcrReasoningEffort        :: Maybe ReasoningEffort
   , rcrInstructions           :: Maybe T.Text
   , rcrAdditionalInstructions :: Maybe T.Text
   , rcrAdditionalMessages     :: Maybe [ThreadMessage]
