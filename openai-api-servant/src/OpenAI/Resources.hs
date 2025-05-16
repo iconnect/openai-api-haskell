@@ -1604,23 +1604,6 @@ newtype ResponseId = ResponseId {unResponseId :: T.Text}
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
 
-
--- | Response object
-data Response = Response
-  { rspId :: ResponseId
-  , rspObject :: T.Text
-  , rspCreated :: TimeStamp
-  , rspModel :: ModelId
-  , rspUsage :: Usage
-  , rspResponseFormat :: Maybe T.Text
-  , rspContent :: Maybe A.Value  -- Could be string, json, etc
-  , rspMetadata :: Maybe A.Object
-  }
-  deriving stock (Show, Eq, Generic)
-  deriving anyclass NFData
-
-$(deriveJSON (jsonOpts 3) ''Response)
-
 data ReasoningSummary
   = RSUM_auto
   | RSUM_concise
@@ -1704,6 +1687,187 @@ instance FromJSON ResponseToolChoice where
         "function" -> RTC_function <$> o A..: "name"
         _          -> RTC_hosted <$> A.parseJSON (A.String ty)
     invalid -> A.typeMismatch "ResponseToolChoice" invalid
+
+data ResponseStatus
+  = RPS_completed
+  | RPS_failed
+  | RPS_in_progress
+  | RPS_incomplete
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''ResponseStatus)
+
+data OutputStatus
+  = OS_in_progress
+  | OS_completed
+  | OS_incomplete
+  | OS_failed
+  | OS_searching
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 3) ''OutputStatus)
+
+data ResponseFunctionCall = ResponseFunctionCall
+  { rfcId        :: T.Text
+  , rfcCallId    :: T.Text
+  , rfcName      :: T.Text
+  , rfcArguments :: T.Text
+  , rfcStatus    :: Maybe OutputStatus
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseFunctionCall)
+
+data ResponseComputerCall = ResponseComputerCall
+  { rccId                  :: T.Text
+  , rccCallId              :: T.Text
+  , rccStatus              :: OutputStatus
+  , rccPendingSafetyChecks :: [A.Value] -- refine if schema becomes stable
+  , rccAction              :: A.Object
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseComputerCall)
+
+data ResponseReasoningItem = ResponseReasoningItem
+  { rriId               :: T.Text
+  , rriStatus           :: Maybe OutputStatus
+  , rriEncryptedContent :: Maybe T.Text
+  , rriSummary          :: [A.Value] -- could refine
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseReasoningItem)
+
+data ResponseWebSearchCall = ResponseWebSearchCall
+  { rwscId     :: T.Text
+  , rwscStatus :: OutputStatus
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseWebSearchCall)
+
+data ResponseFileSearchCallResult = ResponseFileSearchCallResult
+  { rfresFileId     :: FileId
+  , rfresFilename   :: T.Text
+  , rfresScore      :: Double
+  , rfresText       :: T.Text
+  , rfresAttributes :: Maybe A.Object
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 5) ''ResponseFileSearchCallResult)
+
+data ResponseFileSearchCall = ResponseFileSearchCall
+  { rfscId      :: T.Text
+  , rfscStatus  :: OutputStatus
+  , rfscQueries :: [T.Text]
+  , rfscResults :: Maybe ResponseFileSearchCallResult
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseFileSearchCall)
+
+data ResponseMessage = ResponseMessage
+  { rmId      :: T.Text
+  , rmRole    :: T.Text -- always "assistant"
+  , rmStatus  :: Maybe OutputStatus
+  , rmContent :: [A.Value] -- could be refined if schema expands
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ResponseMessage)
+
+data ResponseOutput
+  = RO_Message ResponseMessage
+  | RO_FileSearchCall ResponseFileSearchCall
+  | RO_FunctionCall ResponseFunctionCall
+  | RO_WebSearchCall ResponseWebSearchCall
+  | RO_ComputerCall ResponseComputerCall
+  | RO_Reasoning ResponseReasoningItem
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance FromJSON ResponseOutput where
+  parseJSON = A.withObject "ResponseOutput" $ \o -> do
+    typ <- o A..: "type" :: A.Parser T.Text
+    case typ of
+      "message"            -> RO_Message <$> A.parseJSON (A.Object o)
+      "file_search_call"   -> RO_FileSearchCall <$> A.parseJSON (A.Object o)
+      "function_call"      -> RO_FunctionCall <$> A.parseJSON (A.Object o)
+      "web_search_call"    -> RO_WebSearchCall <$> A.parseJSON (A.Object o)
+      "computer_call"      -> RO_ComputerCall <$> A.parseJSON (A.Object o)
+      "reasoning"          -> RO_Reasoning <$> A.parseJSON (A.Object o)
+      _                    -> fail ("Unknown output item type: " <> T.unpack typ)
+
+instance ToJSON ResponseOutput where
+  toJSON = \case
+    RO_Message x          -> A.Object $ withObj (A.object ["type" A..= ("message" :: T.Text)])          (`mappend` toObject x)
+    RO_FileSearchCall x   -> A.Object $ withObj (A.object ["type" A..= ("file_search_call" :: T.Text)]) (`mappend` toObject x)
+    RO_FunctionCall x     -> A.Object $ withObj (A.object ["type" A..= ("function_call" :: T.Text)])    (`mappend` toObject x)
+    RO_WebSearchCall x    -> A.Object $ withObj (A.object ["type" A..= ("web_search_call" :: T.Text)])  (`mappend` toObject x)
+    RO_ComputerCall x     -> A.Object $ withObj (A.object ["type" A..= ("computer_call" :: T.Text)])    (`mappend` toObject x)
+    RO_Reasoning x        -> A.Object $ withObj (A.object ["type" A..= ("reasoning" :: T.Text)])        (`mappend`toObject x)
+
+withObj :: A.Value -> (A.Object -> a) -> a
+withObj v f = case v of
+  A.Object o -> f o
+  other      -> error $ "Expected object encoding, got: " <> show other
+
+toObject :: ToJSON a => a -> KM.KeyMap A.Value
+toObject v = case A.toJSON v of
+  A.Object o -> o
+  other      -> error $ "Expected object encoding, got: " <> show other
+
+data ResponseError = ResponseError
+  { reCode    :: T.Text
+  , reMessage :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ResponseError)
+
+-- | Response object
+data Response = Response
+  { rspId                :: ResponseId
+  , rspObject            :: T.Text
+  , rspCreatedAt         :: TimeStamp
+  , rspModel             :: ModelId
+  , rspStatus            :: ResponseStatus
+  , rspOutput            :: [ResponseOutput]
+  , rspInstructions      :: Maybe T.Text
+  , rspMaxOutputTokens   :: Maybe Int
+  , rspMetadata          :: Maybe A.Object
+  , rspParallelToolCalls :: Maybe Bool
+  , rspPreviousResponseId :: Maybe ResponseId
+  , rspReasoning         :: Maybe ResponseReasoning
+  , rspServiceTier       :: Maybe ResponseServiceTier
+  , rspTemperature       :: Maybe Double
+  , rspTopP              :: Maybe Double
+  , rspText              :: Maybe ResponseText
+  , rspToolChoice        :: Maybe ResponseToolChoice
+  , rspTools             :: Maybe [AssistantTool]
+  , rspTruncation        :: Maybe ResponseTruncation
+  , rspUsage             :: Maybe Usage
+  , rspUser              :: Maybe T.Text
+  , rspError             :: Maybe ResponseError
+  , rspIncompleteDetails :: Maybe IncompleteDetails
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Response)
+
 
 -- | Request body for POST /v1/responses
 data ResponseCreate = ResponseCreate
