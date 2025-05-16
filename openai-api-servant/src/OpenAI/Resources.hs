@@ -151,6 +151,13 @@ module OpenAI.Resources
     ExpiresAfter(..),
     FileSearchOptions(..),
     RankingOptions(..)
+
+    -- * Responses
+    , ResponseId(..)
+    , Response(..)
+    , ResponseCreate(..)
+    , ResponseInputItem(..)
+    , ResponseInputItems(..)
   )
 where
 
@@ -1586,3 +1593,62 @@ $(deriveJSON (jsonOpts 3) ''ChunkingStrategy)
 $(deriveJSON (jsonOpts 3) ''VectorStore)
 $(deriveJSON (jsonOpts 3) ''ExpiresAfter)
 $(deriveJSON (jsonOpts 3) ''VectorStoreCreate)
+
+--
+-- RESPONSES API
+--
+
+newtype ResponseId = ResponseId {unResponseId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
+
+-- | Response object
+data Response = Response
+  { rspId :: ResponseId
+  , rspObject :: T.Text
+  , rspCreated :: TimeStamp
+  , rspModel :: ModelId
+  , rspUsage :: Usage
+  , rspResponseFormat :: Maybe T.Text
+  , rspContent :: Maybe A.Value  -- Could be string, json, etc
+  , rspMetadata :: Maybe A.Object
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Response)
+
+-- | Request body for POST /v1/responses
+data ResponseCreate = ResponseCreate
+  { recrModel :: ModelId
+  , recrInput :: A.Value
+  , recrResponseFormat :: Maybe T.Text
+  , recrMetadata :: Maybe A.Object
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseCreate)
+
+-- | Response from GET /v1/responses/{response_id}/input_items
+data ResponseInputItem = ResponseInputItem
+  { riiType :: T.Text
+  , riiText :: Maybe T.Text
+  , riiImageFile :: Maybe FileId
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseInputItem)
+
+-- | Wrapper for input items list
+data ResponseInputItems = ResponseInputItems
+  { riiObject :: T.Text
+  , riiData :: V.Vector ResponseInputItem
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseInputItems)

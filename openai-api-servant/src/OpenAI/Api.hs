@@ -11,7 +11,7 @@ import Servant.API
 import Servant.API.EventStream
 import Servant.Auth
 import Servant.Auth.Client
-import Servant.Client.Core
+import Servant.Client.Core hiding (Response)
 import Servant.Multipart.API
 import Servant.Types.SourceT
 import qualified Data.Attoparsec.ByteString       as A
@@ -76,6 +76,8 @@ type OpenAIApiInternal =
     :<|> "assistants" :> AssistantsApi
     :<|> "threads" :> ThreadsApi
     :<|> "vector_stores" :> VectorStoresApi
+    :<|> "responses" :> ResponsesApi
+
 
 type ModelsApi =
   OpenAIAuth :> Get '[JSON] (OpenAIList Model)
@@ -192,3 +194,21 @@ type VectorStoresApi =
     :<|> OpenAIAuth :> AzureAPIVer
                     :> Capture "vector_store_id" VectorStoreId
                     :> Delete '[JSON] DeleteConfirmation
+
+type ResponsesApi =
+         OpenAIAuth
+      :> ReqBody '[JSON] ResponseCreate
+      :> Post '[JSON] Response
+
+    :<|> OpenAIAuth
+      :> Capture "response_id" ResponseId
+      :> Get '[JSON] Response
+
+    :<|> OpenAIAuth
+      :> Capture "response_id" ResponseId
+      :> Delete '[JSON] DeleteConfirmation
+
+    :<|> OpenAIAuth
+      :> Capture "response_id" ResponseId
+      :> "input_items"
+      :> Get '[JSON] ResponseInputItems

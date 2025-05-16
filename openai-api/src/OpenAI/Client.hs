@@ -188,24 +188,33 @@ module OpenAI.Client
     RankingOptions(..),
 
     createVectorStore,
-    deleteVectorStore
+    deleteVectorStore,
+
+    -- * Responses
+    Response(..),
+    ResponseCreate(..),
+    ResponseInputItem(..),
+    ResponseInputItems(..),
+    createResponse,
+    getResponse,
+    deleteResponse,
+    getResponseInputItems
   )
 where
 
 import Control.Monad.IO.Class (MonadIO(..))
-import qualified Data.ByteString.Lazy as BSL
 import Data.Proxy
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import Network.HTTP.Client (Manager)
 import OpenAI.Api
 import OpenAI.Client.Internal.Helpers
-import OpenAI.Resources
-import Servant.API
+import OpenAI.Resources as Resources
+import Servant.API hiding (getResponse)
 import Servant.API.EventStream
 import Servant.Auth.Client
---import Servant.Client
-import Servant.Client.Streaming
+import Servant.Client.Streaming hiding (Response)
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Servant.Multipart.Client as MP
 
 -- | Your OpenAI API key. Can be obtained from the OpenAI dashboard. Format: @sk-<redacted>@
@@ -358,6 +367,12 @@ EP4 (submitToolOutputs, Maybe String, ThreadId, RunId, ToolOutputs, Run)
 EP2 (createVectorStore, Maybe String, VectorStoreCreate, VectorStore)
 EP2 (deleteVectorStore, Maybe String, VectorStoreId, DeleteConfirmation)
 
+EP1 (createResponse, ResponseCreate, Resources.Response)
+EP1 (getResponse, ResponseId, Resources.Response)
+EP1 (deleteResponse, ResponseId, DeleteConfirmation)
+EP1 (getResponseInputItems, ResponseId, ResponseInputItems)
+
+
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
       :<|> getModel'
@@ -403,5 +418,10 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
     :<|> ( createVectorStore'
             :<|> deleteVectorStore'
            )
+    :<|> ( createResponse'
+         :<|> getResponse'
+         :<|> deleteResponse'
+         :<|> getResponseInputItems'
+         )
   ) =
     client api
