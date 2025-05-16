@@ -525,6 +525,7 @@ data ResponseFormat
 data ResponseFormatSchema = ResponseFormatSchema
   { rfsName   :: T.Text
   , rfsStrict :: Bool
+  , rfsDescription :: Maybe T.Text
   , rfsSchema :: A.Value
   } deriving (Show, Eq, Generic)
     deriving anyclass NFData
@@ -1620,12 +1621,110 @@ data Response = Response
 
 $(deriveJSON (jsonOpts 3) ''Response)
 
+data ReasoningSummary
+  = RSUM_auto
+  | RSUM_concise
+  | RSUM_detailed
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 5) ''ReasoningSummary)
+
+data ResponseServiceTier
+  = RST_auto
+  | RST_default
+  | RST_flex
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''ResponseServiceTier)
+
+data ResponseTruncation
+  = RT_auto
+  | RT_disabled
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 3) ''ResponseTruncation)
+
+data ResponseText = ResponseText
+  { rtFormat :: Maybe ResponseFormat
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ResponseText)
+
+data ResponseReasoning = ResponseReasoning
+  { rrEffort          :: Maybe ReasoningEffort
+  , rrGenerateSummary :: Maybe ReasoningSummary -- Deprecated
+  , rrSummary         :: Maybe ReasoningSummary
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ResponseReasoning)
+
+data HostedToolType
+  = HTT_file_search
+  | HTT_web_search_preview
+  | HTT_computer_use_preview
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonEnumsOpts 4) ''HostedToolType)
+
+data ResponseToolChoice
+  = RTC_none
+  | RTC_auto
+  | RTC_required
+  | RTC_hosted HostedToolType
+  | RTC_function T.Text
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ResponseToolChoice where
+  toJSON = \case
+    RTC_none       -> A.String "none"
+    RTC_auto       -> A.String "auto"
+    RTC_required   -> A.String "required"
+    RTC_hosted ht  -> A.object [ "type" A..= ht ]
+    RTC_function n -> A.object [ "type" A..= A.toJSON @T.Text "function"
+                               , "name" A..= n
+                               ]
+
+instance FromJSON ResponseToolChoice where
+  parseJSON = \case
+    A.String "none"     -> pure RTC_none
+    A.String "auto"     -> pure RTC_auto
+    A.String "required" -> pure RTC_required
+    A.Object o -> do
+      ty <- o A..: "type" :: A.Parser T.Text
+      case ty of
+        "function" -> RTC_function <$> o A..: "name"
+        _          -> RTC_hosted <$> A.parseJSON (A.String ty)
+    invalid -> A.typeMismatch "ResponseToolChoice" invalid
+
 -- | Request body for POST /v1/responses
 data ResponseCreate = ResponseCreate
-  { recrModel :: ModelId
-  , recrInput :: A.Value
-  , recrResponseFormat :: Maybe T.Text
-  , recrMetadata :: Maybe A.Object
+  { recrModel              :: ModelId
+  , recrInclude            :: Maybe [T.Text]
+  , recrInstructions       :: Maybe T.Text
+  , recrMaxOutputTokens    :: Maybe Int
+  , recrMetadata           :: Maybe A.Object
+  , recrParallelToolCalls  :: Maybe Bool
+  , recrPreviousResponseId :: Maybe ResponseId
+  , recrReasoning          :: Maybe ResponseReasoning
+  , recrServiceTier        :: Maybe ResponseServiceTier
+  , recrStore              :: Maybe Bool
+  , recrStream             :: Maybe Bool
+  , recrTemperature        :: Maybe Double
+  , recrTopP               :: Maybe Double
+  , recrTruncation         :: Maybe ResponseTruncation
+  , recrUser               :: Maybe T.Text
+  , recrText               :: Maybe ResponseText
+  , recrToolChoice         :: Maybe ResponseToolChoice
+  , recrTools              :: Maybe [AssistantTool]
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
