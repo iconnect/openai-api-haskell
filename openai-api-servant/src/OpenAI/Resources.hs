@@ -162,6 +162,13 @@ module OpenAI.Resources
     , ResponseReasoning(..)
     , ResponseText(..)
     , ResponseToolChoice(..)
+    , ResponseInput(..)
+    , ResponseCreateInputItem(..)
+    , ResponseMessage(..)
+    , ResponseMessageContent(..)
+    , ResponseTextContent(..)
+    , ResponseRefusal(..)
+    , ResponseFunctionCall(..)
   )
 where
 
@@ -1780,11 +1787,55 @@ data ResponseFileSearchCall = ResponseFileSearchCall
 
 $(deriveJSON (jsonOpts 4) ''ResponseFileSearchCall)
 
+data ResponseTextContent = ResponseTextContent
+  { rtcText        :: T.Text
+  , rtcAnnotations :: [A.Value]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseTextContent)
+
+data ResponseRefusal = ResponseRefusal
+  { rrRefusal :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ResponseRefusal)
+
+data ResponseMessageContent
+  = RMC_Text ResponseTextContent
+  | RMC_Refusal ResponseRefusal
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance FromJSON ResponseMessageContent where
+  parseJSON = A.withObject "ResponseMessageContent" $ \o -> do
+    typ <- o A..: "type"
+    case typ of
+      "output_text" -> RMC_Text <$> A.parseJSON (A.Object o)
+      "refusal"     -> RMC_Refusal <$> A.parseJSON (A.Object o)
+      other         -> fail $ "Unknown content type in message: " <> T.unpack other
+
+instance ToJSON ResponseMessageContent where
+  toJSON = \case
+    RMC_Text x ->
+      A.object $ [ "type" A..= A.String "output_text" ]
+                 ++ objectToList (A.toJSON x)
+    RMC_Refusal x ->
+      A.object $ [ "type" A..= A.String "refusal" ]
+                 ++ objectToList (A.toJSON x)
+
+objectToList :: A.Value -> [A.Pair]
+objectToList (A.Object o) = KM.toList o
+objectToList _            = error "Expected object in content encoding"
+
 data ResponseMessage = ResponseMessage
   { rmId      :: T.Text
   , rmRole    :: T.Text -- always "assistant"
   , rmStatus  :: Maybe OutputStatus
-  , rmContent :: [A.Value] -- could be refined if schema expands
+  , rmContent :: ResponseMessageContent
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
