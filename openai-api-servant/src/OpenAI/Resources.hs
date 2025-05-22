@@ -153,11 +153,15 @@ module OpenAI.Resources
     RankingOptions(..)
 
     -- * Responses
-    , ResponseId(..)
     , Response(..)
     , ResponseCreate(..)
+    , ResponseId(..)
     , ResponseInputItem(..)
     , ResponseInputItems(..)
+    , ResponseOutput(..)
+    , ResponseReasoning(..)
+    , ResponseText(..)
+    , ResponseToolChoice(..)
   )
 where
 
@@ -1868,10 +1872,63 @@ data Response = Response
 
 $(deriveJSON (jsonOpts 3) ''Response)
 
+data ResponseCreateInputItem
+  = RII_Message ResponseMessage
+  | RII_FileSearchCall ResponseFileSearchCall
+  | RII_FunctionCall ResponseFunctionCall
+  | RII_WebSearchCall ResponseWebSearchCall
+  | RII_ComputerCall ResponseComputerCall
+  | RII_Reasoning ResponseReasoningItem
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance FromJSON ResponseCreateInputItem where
+  parseJSON = A.withObject "ResponseCreateInputItem" $ \o -> do
+    typ <- o A..:? "type" A..!= "message"  -- default to message
+    case typ of
+      "message"          -> RII_Message <$> A.parseJSON (A.Object o)
+      "file_search_call" -> RII_FileSearchCall <$> A.parseJSON (A.Object o)
+      "function_call"    -> RII_FunctionCall <$> A.parseJSON (A.Object o)
+      "web_search_call"  -> RII_WebSearchCall <$> A.parseJSON (A.Object o)
+      "computer_call"    -> RII_ComputerCall <$> A.parseJSON (A.Object o)
+      "reasoning"        -> RII_Reasoning <$> A.parseJSON (A.Object o)
+      unknown            -> fail ("Unknown input item type: " <> T.unpack unknown)
+
+instance ToJSON ResponseCreateInputItem where
+  toJSON = \case
+    RII_Message x          -> injectType "message" x
+    RII_FileSearchCall x   -> injectType "file_search_call" x
+    RII_FunctionCall x     -> injectType "function_call" x
+    RII_WebSearchCall x    -> injectType "web_search_call" x
+    RII_ComputerCall x     -> injectType "computer_call" x
+    RII_Reasoning x        -> injectType "reasoning" x
+
+injectType :: ToJSON a => T.Text -> a -> A.Value
+injectType ty a = case A.toJSON a of
+  A.Object o -> A.Object $ KM.insert "type" (A.String ty) o
+  _          -> error "Expected object encoding for input item"
+
+data ResponseInput
+  = RI_Text T.Text
+  | RI_Items [ResponseCreateInputItem]
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance FromJSON ResponseInput where
+  parseJSON v = case v of
+    A.String t -> pure (RI_Text t)
+    A.Array xs -> RI_Items <$> mapM A.parseJSON (V.toList xs)
+    _          -> fail "ResponseInput must be either a string or array"
+
+instance ToJSON ResponseInput where
+  toJSON = \case
+    RI_Text t     -> A.String t
+    RI_Items items -> A.toJSON items
 
 -- | Request body for POST /v1/responses
 data ResponseCreate = ResponseCreate
   { recrModel              :: ModelId
+  , recrInput              :: ResponseInput
   , recrInclude            :: Maybe [T.Text]
   , recrInstructions       :: Maybe T.Text
   , recrMaxOutputTokens    :: Maybe Int
