@@ -1831,11 +1831,16 @@ objectToList :: A.Value -> [A.Pair]
 objectToList (A.Object o) = KM.toList o
 objectToList _            = error "Expected object in content encoding"
 
+newtype OutputMessageId = OutputMessageId {unOutputMessageId :: T.Text}
+  deriving stock (Show, Eq, Generic)
+  deriving newtype (ToJSON, FromJSON, ToHttpApiData)
+  deriving anyclass NFData
+
 data ResponseMessage = ResponseMessage
-  { rmId      :: T.Text
+  { rmId      :: OutputMessageId
   , rmRole    :: T.Text -- always "assistant"
-  , rmStatus  :: Maybe OutputStatus
-  , rmContent :: ResponseMessageContent
+  , rmStatus  :: OutputStatus
+  , rmContent :: [ResponseMessageContent]
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -1892,6 +1897,18 @@ data ResponseError = ResponseError
 
 $(deriveJSON (jsonOpts 2) ''ResponseError)
 
+data ResponseUsage = ResponseUsage
+  { rusInputTokens :: Int
+  , rusInputTokensDetails :: A.Object
+  , rusOutputTokens :: Int
+  , rusOutputTokensDetails :: A.Object
+  , rusTotalTokens :: Int
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseUsage)
+
 -- | Response object
 data Response = Response
   { rspId                :: ResponseId
@@ -1913,7 +1930,7 @@ data Response = Response
   , rspToolChoice        :: Maybe ResponseToolChoice
   , rspTools             :: Maybe [AssistantTool]
   , rspTruncation        :: Maybe ResponseTruncation
-  , rspUsage             :: Maybe Usage
+  , rspUsage             :: Maybe ResponseUsage
   , rspUser              :: Maybe T.Text
   , rspError             :: Maybe ResponseError
   , rspIncompleteDetails :: Maybe IncompleteDetails
