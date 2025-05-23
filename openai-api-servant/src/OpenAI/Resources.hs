@@ -169,6 +169,11 @@ module OpenAI.Resources
     , ResponseTextContent(..)
     , ResponseRefusal(..)
     , ResponseFunctionCall(..)
+    , ResponseTool(..)
+    , ResponseToolFunction(..)
+    , ResponseToolFileSearch(..)
+    , ResponseToolMCP(..)
+    , ResponseTextFormat(..)
   )
 where
 
@@ -177,7 +182,7 @@ import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Types as A
 import qualified Data.ByteString.Lazy as BSL
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time
@@ -1641,8 +1646,44 @@ data ResponseTruncation
 
 $(deriveJSON (jsonEnumsOpts 3) ''ResponseTruncation)
 
+newtype ResponseTextFormat = ResponseTextFormat { _ResponseTextFormat :: ResponseFormat }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ResponseTextFormat where
+  toJSON (ResponseTextFormat rtf) = case rtf of
+    RF_text
+      -> A.object [ "type" A..= A.String "text" ]
+    RF_json_object
+      -> A.object [ "type" A..= A.String "json_object" ]
+    RF_json_schema ResponseFormatSchema{..}
+      -> A.object [ "type" A..= A.String "json_schema"
+                  , "name" A..= A.toJSON rfsName
+                  , "schema" A..= rfsSchema
+                  , "description" A..= rfsDescription
+                  , "strict" A..= rfsStrict
+                  ]
+
+instance FromJSON ResponseTextFormat where
+  parseJSON = A.withObject "ResponseFormat" $ \o -> do
+    rt <- o A..: "type"
+    case rt of
+      "text"
+        -> pure $ ResponseTextFormat RF_text
+      "json_object"
+        -> pure $ ResponseTextFormat RF_json_object
+      "json_schema"
+        -> do
+          rfsName <- o A..: "name"
+          rfsSchema <- o A..: "schema"
+          rfsDescription <- o A..:? "description"
+          rfsStrict <- fromMaybe False <$> (o A..:? "strict")
+          pure $ ResponseTextFormat $ RF_json_schema $ ResponseFormatSchema{..}
+      xs
+        -> fail $ "ResponseFormat unexpected type: " <> T.unpack xs
+
 data ResponseText = ResponseText
-  { rtFormat :: Maybe ResponseFormat
+  { rtFormat :: Maybe ResponseTextFormat
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -1909,37 +1950,6 @@ data ResponseUsage = ResponseUsage
 
 $(deriveJSON (jsonOpts 3) ''ResponseUsage)
 
--- | Response object
-data Response = Response
-  { rspId                :: ResponseId
-  , rspObject            :: T.Text
-  , rspCreatedAt         :: TimeStamp
-  , rspModel             :: ModelId
-  , rspStatus            :: ResponseStatus
-  , rspOutput            :: [ResponseOutput]
-  , rspInstructions      :: Maybe T.Text
-  , rspMaxOutputTokens   :: Maybe Int
-  , rspMetadata          :: Maybe A.Object
-  , rspParallelToolCalls :: Maybe Bool
-  , rspPreviousResponseId :: Maybe ResponseId
-  , rspReasoning         :: Maybe ResponseReasoning
-  , rspServiceTier       :: Maybe ResponseServiceTier
-  , rspTemperature       :: Maybe Double
-  , rspTopP              :: Maybe Double
-  , rspText              :: Maybe ResponseText
-  , rspToolChoice        :: Maybe ResponseToolChoice
-  , rspTools             :: Maybe [AssistantTool]
-  , rspTruncation        :: Maybe ResponseTruncation
-  , rspUsage             :: Maybe ResponseUsage
-  , rspUser              :: Maybe T.Text
-  , rspError             :: Maybe ResponseError
-  , rspIncompleteDetails :: Maybe IncompleteDetails
-  }
-  deriving stock (Show, Eq, Generic)
-  deriving anyclass NFData
-
-$(deriveJSON (jsonOpts 3) ''Response)
-
 data ResponseCreateInputItem
   = RII_Message ResponseMessage
   | RII_FileSearchCall ResponseFileSearchCall
@@ -1993,6 +2003,82 @@ instance ToJSON ResponseInput where
     RI_Text t     -> A.String t
     RI_Items items -> A.toJSON items
 
+data ResponseToolFunction = ResponseToolFunction
+  { rtfName        :: T.Text
+  , rtfParameters  :: A.Value
+  , rtfStrict      :: Bool
+  , rtfDescription :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseToolFunction)
+
+data ResponseToolFileSearch = ResponseToolFileSearch
+  { rtfsVectorStoreIds  :: [VectorStoreId]
+  , rtfsFilters         :: Maybe A.Value
+  , rtfsMaxNumResults   :: Maybe Int
+  , rtfsRankingOptions  :: Maybe RankingOptions
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseToolFileSearch)
+
+data ResponseToolMCP = ResponseToolMCP
+  { rtmServer :: T.Text
+  , rtmToolId :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseToolMCP)
+
+data ResponseTool
+  = RT_Function ResponseToolFunction
+  | RT_FileSearch ResponseToolFileSearch
+  | RT_WebSearchPreview
+  | RT_ComputerUsePreview
+  | RT_MCPTool ResponseToolMCP
+  | RT_CodeInterpreter
+  | RT_ImageGeneration
+  | RT_LocalShell
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance FromJSON ResponseTool where
+  parseJSON = A.withObject "ResponseTool" $ \o -> do
+    ty <- o A..: "type"
+    case ty of
+      "function"              -> RT_Function <$> A.parseJSON (A.Object o)
+      "file_search"           -> RT_FileSearch <$> A.parseJSON (A.Object o)
+      "web_search_preview"    -> pure RT_WebSearchPreview
+      "computer_use_preview"  -> pure RT_ComputerUsePreview
+      "mcp_tool"              -> RT_MCPTool <$> A.parseJSON (A.Object o)
+      "code_interpreter"      -> pure RT_CodeInterpreter
+      "image_generation"      -> pure RT_ImageGeneration
+      "local_shell"           -> pure RT_LocalShell
+      _ -> fail ("Unknown tool type: " <> T.unpack ty)
+
+instance ToJSON ResponseTool where
+  toJSON = \case
+    RT_Function t ->
+      injectType "function" (A.toJSON t)
+    RT_FileSearch t ->
+      injectType "file_search" (A.toJSON t)
+    RT_WebSearchPreview ->
+      A.object ["type" A..= A.String "web_search_preview"]
+    RT_ComputerUsePreview ->
+      A.object ["type" A..= A.String "computer_use_preview"]
+    RT_MCPTool t ->
+      injectType "mcp_tool" (A.toJSON t)
+    RT_CodeInterpreter ->
+      A.object ["type" A..= A.String "code_interpreter"]
+    RT_ImageGeneration ->
+      A.object ["type" A..= A.String "image_generation"]
+    RT_LocalShell ->
+      A.object ["type" A..= A.String "local_shell"]
+
 -- | Request body for POST /v1/responses
 data ResponseCreate = ResponseCreate
   { recrModel              :: ModelId
@@ -2013,7 +2099,7 @@ data ResponseCreate = ResponseCreate
   , recrUser               :: Maybe T.Text
   , recrText               :: Maybe ResponseText
   , recrToolChoice         :: Maybe ResponseToolChoice
-  , recrTools              :: Maybe [AssistantTool]
+  , recrTools              :: Maybe [ResponseTool]
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -2040,3 +2126,35 @@ data ResponseInputItems = ResponseInputItems
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 3) ''ResponseInputItems)
+
+-- | Response object
+data Response = Response
+  { rspId                :: ResponseId
+  , rspObject            :: T.Text
+  , rspCreatedAt         :: TimeStamp
+  , rspModel             :: ModelId
+  , rspStatus            :: ResponseStatus
+  , rspOutput            :: [ResponseOutput]
+  , rspInstructions      :: Maybe T.Text
+  , rspMaxOutputTokens   :: Maybe Int
+  , rspMetadata          :: Maybe A.Object
+  , rspParallelToolCalls :: Maybe Bool
+  , rspPreviousResponseId :: Maybe ResponseId
+  , rspReasoning         :: Maybe ResponseReasoning
+  , rspServiceTier       :: Maybe ResponseServiceTier
+  , rspTemperature       :: Maybe Double
+  , rspTopP              :: Maybe Double
+  , rspText              :: Maybe ResponseText
+  , rspToolChoice        :: Maybe ResponseToolChoice
+  , rspTools             :: Maybe [ResponseTool]
+  , rspTruncation        :: Maybe ResponseTruncation
+  , rspUsage             :: Maybe ResponseUsage
+  , rspUser              :: Maybe T.Text
+  , rspError             :: Maybe ResponseError
+  , rspIncompleteDetails :: Maybe IncompleteDetails
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''Response)
+
