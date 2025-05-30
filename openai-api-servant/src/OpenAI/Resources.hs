@@ -1831,6 +1831,8 @@ $(deriveJSON (jsonOpts 4) ''ResponseFileSearchCall)
 data ResponseTextContent = ResponseTextContent
   { rtcText        :: T.Text
   , rtcAnnotations :: [A.Value]
+  -- one between: 'refusal', 'output_text', 'input_text' etc.
+  , rtcType        :: T.Text -- keeping it free-text for now.
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -1854,10 +1856,9 @@ data ResponseMessageContent
 instance FromJSON ResponseMessageContent where
   parseJSON = A.withObject "ResponseMessageContent" $ \o -> do
     typ <- o A..: "type"
-    case typ of
-      "output_text" -> RMC_Text <$> A.parseJSON (A.Object o)
-      "refusal"     -> RMC_Refusal <$> A.parseJSON (A.Object o)
-      other         -> fail $ "Unknown content type in message: " <> T.unpack other
+    case typ :: T.Text of
+      "refusal" -> RMC_Refusal <$> A.parseJSON (A.Object o)
+      _         -> RMC_Text <$> A.parseJSON (A.Object o)
 
 instance ToJSON ResponseMessageContent where
   toJSON = \case
@@ -1878,9 +1879,9 @@ newtype OutputMessageId = OutputMessageId {unOutputMessageId :: T.Text}
   deriving anyclass NFData
 
 data ResponseMessage = ResponseMessage
-  { rmId      :: OutputMessageId
-  , rmRole    :: T.Text -- always "assistant"
-  , rmStatus  :: OutputStatus
+  { rmId      :: Maybe OutputMessageId
+  , rmRole    :: T.Text
+  , rmStatus  :: Maybe OutputStatus
   , rmContent :: [ResponseMessageContent]
   }
   deriving stock (Show, Eq, Generic)
