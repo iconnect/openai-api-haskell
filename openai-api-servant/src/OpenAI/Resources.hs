@@ -267,7 +267,7 @@ data Model = Model
   deriving anyclass NFData
 
 newtype ModelId = ModelId {unModelId :: T.Text}
-  deriving stock (Show, Eq, Generic)
+  deriving stock (Show, Eq, Generic, Ord)
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
   deriving anyclass NFData
 
