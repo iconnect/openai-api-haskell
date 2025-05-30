@@ -182,7 +182,7 @@ import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Types as A
 import qualified Data.ByteString.Lazy as BSL
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time
@@ -1830,14 +1830,31 @@ $(deriveJSON (jsonOpts 4) ''ResponseFileSearchCall)
 
 data ResponseTextContent = ResponseTextContent
   { rtcText        :: T.Text
-  , rtcAnnotations :: [A.Value]
+  , rtcAnnotations :: Maybe [A.Value]
   -- one between: 'refusal', 'output_text', 'input_text' etc.
   , rtcType        :: T.Text -- keeping it free-text for now.
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
-$(deriveJSON (jsonOpts 3) ''ResponseTextContent)
+instance ToJSON ResponseTextContent where
+  toJSON ResponseTextContent{..} =
+    A.object $ [ "text" A..= A.toJSON rtcText
+               , "type" A..= A.toJSON rtcType
+               ] ++ if isJust rtcAnnotations && (rtcAnnotations /= Just [])
+                       then [ "annotations" A..= A.toJSON rtcAnnotations ]
+                       else []
+
+instance FromJSON ResponseTextContent where
+  parseJSON = A.withObject "ResponseTextContent" $ \o -> do
+    rtcText <- o A..: "text"
+    rtcType <- o A..: "type"
+    anns    <- o A..:? "annotations"
+    let rtcAnnotations = case anns of
+          Nothing -> Nothing
+          Just [] -> Nothing
+          Just x  -> Just x
+    pure ResponseTextContent{..}
 
 data ResponseRefusal = ResponseRefusal
   { rrRefusal :: T.Text
@@ -1883,6 +1900,7 @@ data ResponseMessage = ResponseMessage
   , rmRole    :: T.Text
   , rmStatus  :: Maybe OutputStatus
   , rmContent :: [ResponseMessageContent]
+  , rmType    :: Maybe T.Text
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
@@ -1901,19 +1919,19 @@ data ResponseOutput
 
 instance FromJSON ResponseOutput where
   parseJSON = A.withObject "ResponseOutput" $ \o -> do
-    typ <- o A..: "type" :: A.Parser T.Text
+    typ <- o A..:? "type" :: A.Parser (Maybe T.Text)
     case typ of
-      "message"            -> RO_Message <$> A.parseJSON (A.Object o)
-      "file_search_call"   -> RO_FileSearchCall <$> A.parseJSON (A.Object o)
-      "function_call"      -> RO_FunctionCall <$> A.parseJSON (A.Object o)
-      "web_search_call"    -> RO_WebSearchCall <$> A.parseJSON (A.Object o)
-      "computer_call"      -> RO_ComputerCall <$> A.parseJSON (A.Object o)
-      "reasoning"          -> RO_Reasoning <$> A.parseJSON (A.Object o)
-      _                    -> fail ("Unknown output item type: " <> T.unpack typ)
+      Just "message"            -> RO_Message <$> A.parseJSON (A.Object o)
+      Just "file_search_call"   -> RO_FileSearchCall <$> A.parseJSON (A.Object o)
+      Just "function_call"      -> RO_FunctionCall <$> A.parseJSON (A.Object o)
+      Just "web_search_call"    -> RO_WebSearchCall <$> A.parseJSON (A.Object o)
+      Just "computer_call"      -> RO_ComputerCall <$> A.parseJSON (A.Object o)
+      Just "reasoning"          -> RO_Reasoning <$> A.parseJSON (A.Object o)
+      _                         -> RO_Message <$> A.parseJSON (A.Object o) -- assume message
 
 instance ToJSON ResponseOutput where
   toJSON = \case
-    RO_Message x          -> A.Object $ withObj (A.object ["type" A..= ("message" :: T.Text)])          (`mappend` toObject x)
+    RO_Message x          -> A.toJSON x
     RO_FileSearchCall x   -> A.Object $ withObj (A.object ["type" A..= ("file_search_call" :: T.Text)]) (`mappend` toObject x)
     RO_FunctionCall x     -> A.Object $ withObj (A.object ["type" A..= ("function_call" :: T.Text)])    (`mappend` toObject x)
     RO_WebSearchCall x    -> A.Object $ withObj (A.object ["type" A..= ("web_search_call" :: T.Text)])  (`mappend` toObject x)
@@ -1975,7 +1993,7 @@ instance FromJSON ResponseCreateInputItem where
 
 instance ToJSON ResponseCreateInputItem where
   toJSON = \case
-    RII_Message x          -> injectType "message" x
+    RII_Message x          -> A.toJSON x
     RII_FileSearchCall x   -> injectType "file_search_call" x
     RII_FunctionCall x     -> injectType "function_call" x
     RII_WebSearchCall x    -> injectType "web_search_call" x
