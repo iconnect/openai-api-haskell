@@ -181,6 +181,9 @@ module OpenAI.Resources
     , ModerationResult(..)
     , ModerationCategories(..)
     , ModerationCategoryScores(..)
+    , ModerationInput(..)
+    , ModerationInputMulti(..)
+    , ModerationInputImage(..)
   )
 where
 
@@ -2266,7 +2269,7 @@ instance FromJSON ModerationInputImage where
 
 data ModerationCreate = ModerationCreate
   { mcInput :: ModerationInput
-  , mcModel :: T.Text
+  , mcModel :: ModelId
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData

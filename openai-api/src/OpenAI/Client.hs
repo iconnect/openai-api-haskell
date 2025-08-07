@@ -206,6 +206,9 @@ module OpenAI.Client
     ModerationResult(..),
     ModerationCategories(..),
     ModerationCategoryScores(..),
+    ModerationInput(..),
+    ModerationInputMulti(..),
+    ModerationInputImage(..),
     createModeration
   )
 where
