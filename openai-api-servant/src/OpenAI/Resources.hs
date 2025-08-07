@@ -174,6 +174,13 @@ module OpenAI.Resources
     , ResponseToolFileSearch(..)
     , ResponseToolMCP(..)
     , ResponseTextFormat(..)
+
+    -- * Moderation
+    , ModerationCreate(..)
+    , ModerationResponse(..)
+    , ModerationResult(..)
+    , ModerationCategories(..)
+    , ModerationCategoryScores(..)
   )
 where
 
@@ -2177,3 +2184,63 @@ data Response = Response
 
 $(deriveJSON (jsonOpts 3) ''Response)
 
+------------------------
+------ Moderation API
+------------------------
+
+data ModerationCreate = ModerationCreate
+  { mcInput :: T.Text
+  , mcModel :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationCreate)
+
+data ModerationCategories = ModerationCategories
+  { mcHate :: Bool
+  , mcHateThreatening :: Bool
+  , mcSelfHarm :: Bool
+  , mcSexual :: Bool
+  , mcSexualMinors :: Bool
+  , mcViolence :: Bool
+  , mcViolenceGraphic :: Bool
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationCategories)
+
+data ModerationCategoryScores = ModerationCategoryScores
+  { mcsHate :: Double
+  , mcsHateThreatening :: Double
+  , mcsSelfHarm :: Double
+  , mcsSexual :: Double
+  , mcsSexualMinors :: Double
+  , mcsViolence :: Double
+  , mcsViolenceGraphic :: Double
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationCategoryScores)
+
+data ModerationResult = ModerationResult
+  { mrFlagged :: Bool
+  , mrCategories :: ModerationCategories
+  , mrCategoryScores :: ModerationCategoryScores
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationResult)
+
+data ModerationResponse = ModerationResponse
+  { mrId :: T.Text
+  , mrModel :: T.Text
+  , mrResults :: [ModerationResult]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationResponse)
