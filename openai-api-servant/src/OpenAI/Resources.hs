@@ -2279,7 +2279,7 @@ $(deriveJSON (jsonOpts 2) ''ModerationCreate)
 data ModerationCategories = ModerationCategories
   { mcHate :: Bool
   , mcHateThreatening :: Bool
-  , mcSelfHarm :: Bool
+  , mcSelf_Harm :: Bool
   , mcSexual :: Bool
   , mcSexualMinors :: Bool
   , mcViolence :: Bool
@@ -2288,12 +2288,12 @@ data ModerationCategories = ModerationCategories
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
-$(deriveJSON (jsonOpts 2) ''ModerationCategories)
+$(deriveJSON (jsonOptsSlashSeparated 2) ''ModerationCategories)
 
 data ModerationCategoryScores = ModerationCategoryScores
   { mcsHate :: Double
   , mcsHateThreatening :: Double
-  , mcsSelfHarm :: Double
+  , mcsSelf_Harm :: Double
   , mcsSexual :: Double
   , mcsSexualMinors :: Double
   , mcsViolence :: Double
@@ -2302,7 +2302,7 @@ data ModerationCategoryScores = ModerationCategoryScores
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
-$(deriveJSON (jsonOpts 2) ''ModerationCategoryScores)
+$(deriveJSON (jsonOptsSlashSeparated 3) ''ModerationCategoryScores)
 
 data ModerationResult = ModerationResult
   { mrFlagged :: Bool
