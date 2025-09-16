@@ -198,7 +198,18 @@ module OpenAI.Client
     createResponse,
     getResponse,
     deleteResponse,
-    getResponseInputItems
+    getResponseInputItems,
+
+    -- * Moderation
+    ModerationCreate(..),
+    ModerationResponse(..),
+    ModerationResult(..),
+    ModerationCategories(..),
+    ModerationCategoryScores(..),
+    ModerationInput(..),
+    ModerationInputMulti(..),
+    ModerationInputImage(..),
+    createModeration
   )
 where
 
@@ -371,7 +382,7 @@ EP1 (createResponse, ResponseCreate, Resources.Response)
 EP1 (getResponse, ResponseId, Resources.Response)
 EP1 (deleteResponse, ResponseId, DeleteConfirmation)
 EP1 (getResponseInputItems, ResponseId, ResponseInputItems)
-
+EP1 (createModeration, ModerationCreate, ModerationResponse)
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
 ( ( listModels'
@@ -423,5 +434,6 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
          :<|> deleteResponse'
          :<|> getResponseInputItems'
          )
+    :<|> ( createModeration' )
   ) =
     client api

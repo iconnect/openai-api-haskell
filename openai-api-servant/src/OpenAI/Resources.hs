@@ -174,25 +174,36 @@ module OpenAI.Resources
     , ResponseToolFileSearch(..)
     , ResponseToolMCP(..)
     , ResponseTextFormat(..)
+
+    -- * Moderation
+    , ModerationCreate(..)
+    , ModerationResponse(..)
+    , ModerationResult(..)
+    , ModerationCategories(..)
+    , ModerationCategoryScores(..)
+    , ModerationInput(..)
+    , ModerationInputMulti(..)
+    , ModerationInputImage(..)
   )
 where
 
+import Control.Applicative
 import Control.DeepSeq
-import qualified Data.Aeson as A
-import qualified Data.Aeson.KeyMap as KM
-import qualified Data.Aeson.Types as A
-import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (catMaybes, fromMaybe, isJust)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import Data.Time
 import Data.Time.Clock.POSIX
-import qualified Data.Vector as V
 import GHC.Generics
 import Network.Mime (defaultMimeLookup)
 import OpenAI.Internal.Aeson
 import Servant.API
 import Servant.Multipart.API
+import qualified Data.Aeson as A
+import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Aeson.Types as A
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Vector as V
 
 -- | A 'UTCTime' wrapper that has unix timestamp JSON representation
 newtype TimeStamp = TimeStamp {unTimeStamp :: UTCTime}
@@ -2177,3 +2188,138 @@ data Response = Response
 
 $(deriveJSON (jsonOpts 3) ''Response)
 
+------------------------
+------ Moderation API
+------------------------
+
+data ModerationInput
+  = -- | A string of text to classify for moderation
+    MI_Text T.Text
+    -- | An array of text to classify for moderation
+  | MI_TextArray [T.Text]
+    -- | An array of multi-modal inputs to the moderation model.
+  | MI_MultiModal [ModerationInputMulti]
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ModerationInput where
+  toJSON = \case
+    MI_Text txt       -> A.String txt
+    MI_TextArray txts -> A.toJSON txts
+    MI_MultiModal xs  -> A.toJSON xs
+
+instance FromJSON ModerationInput where
+  parseJSON v = case v of
+    A.String txt ->
+      pure $ MI_Text txt
+
+    A.Array arr ->
+      -- try to parse as [Text] first, fallback to [ModerationInputMulti]
+      (MI_TextArray <$> mapM A.parseJSON (V.toList arr))
+        <|> (MI_MultiModal <$> mapM A.parseJSON (V.toList arr))
+
+    _ -> fail "Expected string, array of strings, or array of structured moderation inputs"
+
+data ModerationInputMulti
+  = MIM_image ModerationInputImage
+  | MIM_text  T.Text
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ModerationInputMulti where
+  toJSON = \case
+    MIM_text txt ->
+      A.object
+        [ "type" A..= ("text" :: T.Text)
+        , "text" A..= txt
+        ]
+
+    MIM_image img ->
+      A.toJSON img
+
+instance FromJSON ModerationInputMulti where
+  parseJSON = A.withObject "ModerationInputMulti" $ \o -> do
+    typ <- o A..: "type"
+    case typ of
+      "text" -> MIM_text <$> o A..: "text"
+      "image_url" -> MIM_image <$> A.parseJSON (A.Object o)
+      other -> fail $ "Unknown moderation multimodal type: " <> T.unpack other
+
+newtype ModerationInputImage
+  = ModerationInputImage { getModerationInputImage :: T.Text }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ModerationInputImage where
+  toJSON (ModerationInputImage url) =
+    A.object
+      [ "type"       A..= ("image_url" :: T.Text)
+      , "image_url"  A..= A.object ["url" A..= url]
+      ]
+
+instance FromJSON ModerationInputImage where
+  parseJSON = A.withObject "ModerationInputImage" $ \o -> do
+    typ <- o A..: "type"
+    case typ of
+      "image_url" -> do
+        imgUrlObj <- o A..: "image_url"
+        url <- A.withObject "image_url" (\img -> img A..: "url") imgUrlObj
+        pure (ModerationInputImage url)
+      other -> fail $ "Expected type=image_url, but got: " <> T.unpack other
+
+data ModerationCreate = ModerationCreate
+  { mcInput :: ModerationInput
+  , mcModel :: ModelId
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationCreate)
+
+data ModerationCategories = ModerationCategories
+  { mcHate :: Bool
+  , mcHateThreatening :: Bool
+  , mcSelf_Harm :: Bool
+  , mcSexual :: Bool
+  , mcSexualMinors :: Bool
+  , mcViolence :: Bool
+  , mcViolenceGraphic :: Bool
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOptsSlashSeparated 2) ''ModerationCategories)
+
+data ModerationCategoryScores = ModerationCategoryScores
+  { mcsHate :: Double
+  , mcsHateThreatening :: Double
+  , mcsSelf_Harm :: Double
+  , mcsSexual :: Double
+  , mcsSexualMinors :: Double
+  , mcsViolence :: Double
+  , mcsViolenceGraphic :: Double
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOptsSlashSeparated 3) ''ModerationCategoryScores)
+
+data ModerationResult = ModerationResult
+  { mrFlagged :: Bool
+  , mrCategories :: ModerationCategories
+  , mrCategoryScores :: ModerationCategoryScores
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationResult)
+
+data ModerationResponse = ModerationResponse
+  { mrId :: T.Text
+  , mrModel :: T.Text
+  , mrResults :: [ModerationResult]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 2) ''ModerationResponse)

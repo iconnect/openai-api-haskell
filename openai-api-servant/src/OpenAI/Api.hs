@@ -77,6 +77,7 @@ type OpenAIApiInternal =
     :<|> "threads" :> ThreadsApi
     :<|> "vector_stores" :> VectorStoresApi
     :<|> "responses" :> ResponsesApi
+    :<|> "moderations" :> ModerationsApi
 
 
 type ModelsApi =
@@ -212,3 +213,8 @@ type ResponsesApi =
       :> Capture "response_id" ResponseId
       :> "input_items"
       :> Get '[JSON] ResponseInputItems
+
+type ModerationsApi =
+  OpenAIAuth
+    :> ReqBody '[JSON] ModerationCreate
+    :> Post '[JSON] ModerationResponse
