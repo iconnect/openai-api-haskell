@@ -504,7 +504,8 @@ newtype Seed = Seed { unSeed :: Int }
   deriving anyclass NFData
 
 data ReasoningEffort =
-    RE_minimal
+    RE_none
+  | RE_minimal
   | RE_low
   | RE_medium
   | RE_high
