@@ -509,6 +509,7 @@ data ReasoningEffort =
   | RE_low
   | RE_medium
   | RE_high
+  | RE_xhigh
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
