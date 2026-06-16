@@ -107,6 +107,37 @@ compactionSpec = describe "compaction api" $ do
           cmprOutput r `shouldBe`
             [RO_Compaction (ResponseCompactionItem (Just "item_1") "E==" Nothing)]
 
+  describe "ResponseOutput extra variants" $ do
+    it "decodes function_call_output" $ do
+      let raw = "{\"type\":\"function_call_output\",\"call_id\":\"call_1\",\"output\":\"42\"}"
+      case decode raw :: Maybe ResponseOutput of
+        Just (RO_FunctionCallOutput _) -> pure ()
+        other -> expectationFailure ("expected RO_FunctionCallOutput, got " <> show other)
+    it "decodes mcp_call" $ do
+      let raw = "{\"type\":\"mcp_call\",\"id\":\"m1\",\"arguments\":\"{}\",\"name\":\"do\",\"server_label\":\"srv\"}"
+      case decode raw :: Maybe ResponseOutput of
+        Just (RO_McpCall _) -> pure ()
+        other -> expectationFailure ("expected RO_McpCall, got " <> show other)
+    it "decodes image_generation_call" $ do
+      let raw = "{\"type\":\"image_generation_call\",\"id\":\"img_1\",\"result\":null,\"status\":\"completed\"}"
+      case decode raw :: Maybe ResponseOutput of
+        Just (RO_ImageGenerationCall _) -> pure ()
+        other -> expectationFailure ("expected RO_ImageGenerationCall, got " <> show other)
+    it "falls back to RO_Unknown for unknown discriminators and round-trips verbatim" $ do
+      let raw = "{\"type\":\"some_future_call\",\"id\":\"x\",\"weird_field\":[1,2,3]}"
+          orig = decode raw :: Maybe Value
+      case decode raw :: Maybe ResponseOutput of
+        Just (RO_Unknown v) -> Just v `shouldBe` orig
+        other -> expectationFailure ("expected RO_Unknown, got " <> show other)
+
+  describe "ResponseCreateInputItem extra variants" $
+    it "round-trips an RII_Unknown payload" $ do
+      let raw = "{\"type\":\"future_input\",\"id\":\"x\",\"data\":42}"
+          orig = decode raw :: Maybe Value
+      case decode raw :: Maybe ResponseCreateInputItem of
+        Just (RII_Unknown v) -> Just v `shouldBe` orig
+        other                -> expectationFailure ("expected RII_Unknown, got " <> show other)
+
   describe "ResponseCreate context_management" $
     it "round-trips with a compaction entry" $ do
       let req = ResponseCreate
