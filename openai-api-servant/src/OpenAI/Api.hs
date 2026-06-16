@@ -214,6 +214,11 @@ type ResponsesApi =
       :> "input_items"
       :> Get '[JSON] ResponseInputItems
 
+    :<|> OpenAIAuth
+      :> "compact"
+      :> ReqBody '[JSON] ResponseCompactCreate
+      :> Post '[JSON] CompactedResponse
+
 type ModerationsApi =
   OpenAIAuth
     :> ReqBody '[JSON] ModerationCreate

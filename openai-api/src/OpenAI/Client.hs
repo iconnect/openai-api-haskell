@@ -192,13 +192,24 @@ module OpenAI.Client
 
     -- * Responses
     Response(..),
+    ResponseId(..),
     ResponseCreate(..),
+    ResponseInput(..),
     ResponseInputItem(..),
     ResponseInputItems(..),
+    ResponseOutput(..),
+    ResponseCreateInputItem(..),
+    ResponseServiceTier(..),
+    ResponseCompactionItem(..),
+    ContextManagementItem(..),
+    PromptCacheRetention(..),
+    ResponseCompactCreate(..),
+    CompactedResponse(..),
     createResponse,
     getResponse,
     deleteResponse,
     getResponseInputItems,
+    compactResponse,
 
     -- * Moderation
     ModerationCreate(..),
@@ -382,6 +393,7 @@ EP1 (createResponse, ResponseCreate, Resources.Response)
 EP1 (getResponse, ResponseId, Resources.Response)
 EP1 (deleteResponse, ResponseId, DeleteConfirmation)
 EP1 (getResponseInputItems, ResponseId, ResponseInputItems)
+EP1 (compactResponse, ResponseCompactCreate, CompactedResponse)
 EP1 (createModeration, ModerationCreate, ModerationResponse)
 
 completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> ClientM EventSource
@@ -433,6 +445,7 @@ completeChatStreaming' :: Token -> ChatCompletionRequest -> Maybe String -> Clie
          :<|> getResponse'
          :<|> deleteResponse'
          :<|> getResponseInputItems'
+         :<|> compactResponse'
          )
     :<|> ( createModeration' )
   ) =

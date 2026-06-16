@@ -56,7 +56,7 @@ library
     , http-client
     , http-types
     , openai-api-servant >=0.2.1
-    , servant <= 0.20.2.0
+    , servant <= 0.20.4.0
     , servant-auth-client
     , servant-client
     , servant-event-stream >= 0.2.1.0
@@ -70,6 +70,7 @@ test-suite openai-api-test
   main-is: Spec.hs
   other-modules:
       ApiSpec
+      CompactionSpec
       HelperSpec
       Paths_openai_api
   hs-source-dirs:

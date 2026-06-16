@@ -174,6 +174,12 @@ module OpenAI.Resources
     , ResponseToolFileSearch(..)
     , ResponseToolMCP(..)
     , ResponseTextFormat(..)
+    , ResponseServiceTier(..)
+    , ResponseCompactionItem(..)
+    , ContextManagementItem(..)
+    , PromptCacheRetention(..)
+    , ResponseCompactCreate(..)
+    , CompactedResponse(..)
 
     -- * Moderation
     , ModerationCreate(..)
@@ -1647,6 +1653,7 @@ data ResponseServiceTier
   = RST_auto
   | RST_default
   | RST_flex
+  | RST_priority
   deriving stock (Show, Eq, Generic, Enum, Bounded)
   deriving anyclass NFData
 
@@ -1921,6 +1928,18 @@ data ResponseMessage = ResponseMessage
 
 $(deriveJSON (jsonOpts 2) ''ResponseMessage)
 
+-- | A compaction item returned by `POST /v1/responses/compact`, or echoed
+-- back as an input item on a subsequent request.
+data ResponseCompactionItem = ResponseCompactionItem
+  { rciId               :: Maybe T.Text  -- ^ Present on output, optional on input.
+  , rciEncryptedContent :: T.Text
+  , rciCreatedBy        :: Maybe T.Text  -- ^ Output-only.
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseCompactionItem)
+
 data ResponseOutput
   = RO_Message ResponseMessage
   | RO_FileSearchCall ResponseFileSearchCall
@@ -1928,6 +1947,7 @@ data ResponseOutput
   | RO_WebSearchCall ResponseWebSearchCall
   | RO_ComputerCall ResponseComputerCall
   | RO_Reasoning ResponseReasoningItem
+  | RO_Compaction ResponseCompactionItem
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
@@ -1941,6 +1961,7 @@ instance FromJSON ResponseOutput where
       Just "web_search_call"    -> RO_WebSearchCall <$> A.parseJSON (A.Object o)
       Just "computer_call"      -> RO_ComputerCall <$> A.parseJSON (A.Object o)
       Just "reasoning"          -> RO_Reasoning <$> A.parseJSON (A.Object o)
+      Just "compaction"         -> RO_Compaction <$> A.parseJSON (A.Object o)
       _                         -> RO_Message <$> A.parseJSON (A.Object o) -- assume message
 
 instance ToJSON ResponseOutput where
@@ -1951,6 +1972,7 @@ instance ToJSON ResponseOutput where
     RO_WebSearchCall x    -> A.Object $ withObj (A.object ["type" A..= ("web_search_call" :: T.Text)])  (`mappend` toObject x)
     RO_ComputerCall x     -> A.Object $ withObj (A.object ["type" A..= ("computer_call" :: T.Text)])    (`mappend` toObject x)
     RO_Reasoning x        -> A.Object $ withObj (A.object ["type" A..= ("reasoning" :: T.Text)])        (`mappend`toObject x)
+    RO_Compaction x       -> A.Object $ withObj (A.object ["type" A..= ("compaction" :: T.Text)])       (`mappend` toObject x)
 
 withObj :: A.Value -> (A.Object -> a) -> a
 withObj v f = case v of
@@ -1990,6 +2012,7 @@ data ResponseCreateInputItem
   | RII_WebSearchCall ResponseWebSearchCall
   | RII_ComputerCall ResponseComputerCall
   | RII_Reasoning ResponseReasoningItem
+  | RII_Compaction ResponseCompactionItem
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
@@ -2003,6 +2026,7 @@ instance FromJSON ResponseCreateInputItem where
       "web_search_call"  -> RII_WebSearchCall <$> A.parseJSON (A.Object o)
       "computer_call"    -> RII_ComputerCall <$> A.parseJSON (A.Object o)
       "reasoning"        -> RII_Reasoning <$> A.parseJSON (A.Object o)
+      "compaction"       -> RII_Compaction <$> A.parseJSON (A.Object o)
       unknown            -> fail ("Unknown input item type: " <> T.unpack unknown)
 
 instance ToJSON ResponseCreateInputItem where
@@ -2013,6 +2037,7 @@ instance ToJSON ResponseCreateInputItem where
     RII_WebSearchCall x    -> injectType "web_search_call" x
     RII_ComputerCall x     -> injectType "computer_call" x
     RII_Reasoning x        -> injectType "reasoning" x
+    RII_Compaction x       -> injectType "compaction" x
 
 injectType :: ToJSON a => T.Text -> a -> A.Value
 injectType ty a = case A.toJSON a of
@@ -2112,6 +2137,26 @@ instance ToJSON ResponseTool where
     RT_LocalShell ->
       A.object ["type" A..= A.String "local_shell"]
 
+-- | Context management entry for a `POST /v1/responses` request.
+-- Currently only the @compaction@ strategy is supported.
+data ContextManagementItem
+  = CMI_Compaction { cmiCompactThreshold :: Maybe Int }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ContextManagementItem where
+  toJSON = \case
+    CMI_Compaction mt ->
+      A.object $ ("type" A..= A.String "compaction")
+               : maybe [] (\t -> ["compact_threshold" A..= t]) mt
+
+instance FromJSON ContextManagementItem where
+  parseJSON = A.withObject "ContextManagementItem" $ \o -> do
+    ty <- o A..: "type" :: A.Parser T.Text
+    case ty of
+      "compaction" -> CMI_Compaction <$> o A..:? "compact_threshold"
+      other        -> fail ("Unknown context management type: " <> T.unpack other)
+
 -- | Request body for POST /v1/responses
 data ResponseCreate = ResponseCreate
   { recrModel              :: ModelId
@@ -2133,11 +2178,56 @@ data ResponseCreate = ResponseCreate
   , recrText               :: Maybe ResponseText
   , recrToolChoice         :: Maybe ResponseToolChoice
   , recrTools              :: Maybe [ResponseTool]
+  , recrContextManagement  :: Maybe [ContextManagementItem]
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 4) ''ResponseCreate)
+
+-- | Prompt cache retention strategy for `POST /v1/responses/compact`.
+data PromptCacheRetention = PCR_InMemory | PCR_24h
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON PromptCacheRetention where
+  toJSON PCR_InMemory = A.String "in_memory"
+  toJSON PCR_24h      = A.String "24h"
+
+instance FromJSON PromptCacheRetention where
+  parseJSON = A.withText "PromptCacheRetention" $ \case
+    "in_memory" -> pure PCR_InMemory
+    "24h"       -> pure PCR_24h
+    other       -> fail ("Unknown PromptCacheRetention: " <> T.unpack other)
+
+-- | Request body for @POST /v1/responses/compact@.
+data ResponseCompactCreate = ResponseCompactCreate
+  { rccModel                :: ModelId
+  , rccInput                :: Maybe ResponseInput
+  , rccInstructions         :: Maybe T.Text
+  , rccPreviousResponseId   :: Maybe ResponseId
+  , rccPromptCacheKey       :: Maybe T.Text
+  , rccPromptCacheRetention :: Maybe PromptCacheRetention
+  , rccServiceTier          :: Maybe ResponseServiceTier
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseCompactCreate)
+
+-- | Response from @POST /v1/responses/compact@. The @object@ field is
+-- always @"response.compaction"@.
+data CompactedResponse = CompactedResponse
+  { cmprId        :: T.Text
+  , cmprCreatedAt :: Int
+  , cmprObject    :: T.Text
+  , cmprOutput    :: [ResponseOutput]
+  , cmprUsage     :: ResponseUsage
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''CompactedResponse)
 
 -- | Response from GET /v1/responses/{response_id}/input_items
 data ResponseInputItem = ResponseInputItem
