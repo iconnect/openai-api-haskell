@@ -38,6 +38,7 @@ module OpenAI.Resources
     ChatResponse (..),
     Seed(..),
     SystemFingerprint(..),
+    ResponseStatus(..),
     ResponseFormat(..),
     ResponseFormatSchema(..),
     ReasoningEffort(..),
