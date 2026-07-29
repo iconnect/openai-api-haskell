@@ -66,5 +66,4 @@ library
     , text
     , time
     , vector
-    , wai-extra
   default-language: Haskell2010

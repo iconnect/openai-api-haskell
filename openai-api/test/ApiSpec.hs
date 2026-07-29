@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-x-partial #-}
 module ApiSpec (apiSpec) where
 
 import qualified Data.Text as T

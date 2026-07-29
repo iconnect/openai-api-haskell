@@ -47,12 +47,8 @@ library
   build-tools:
     cpphs>=1.20
   build-depends:
-      aeson
-    , base >=4.7 && <5
+      base >=4.7 && <5
     , bytestring
-    , casing
-    , cpphs
-    , deepseq
     , http-client
     , http-types
     , openai-api-servant >=0.2.1
@@ -62,7 +58,6 @@ library
     , servant-event-stream >= 0.2.1.0
     , servant-multipart-client
     , text
-    , wai-extra
   default-language: Haskell2010
 
 test-suite openai-api-test
@@ -93,20 +88,14 @@ test-suite openai-api-test
       aeson
     , base >=4.7 && <5
     , bytestring
-    , casing
     , containers
-    , cpphs
     , hspec
     , http-client
     , http-client-tls
     , http-types
     , openai-api
-    , openai-api-servant >=0.2.1
-    , servant
-    , servant-auth-client
     , servant-client
     , servant-client-core
-    , servant-multipart-client
     , text
     , vector
   default-language: Haskell2010
