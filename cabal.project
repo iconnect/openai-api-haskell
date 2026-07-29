@@ -4,4 +4,4 @@ packages: openai-api
 source-repository-package
     type: git
     location: https://github.com/iconnect/servant-event-stream.git
-    tag: ceb7a62e072991be1289055ba1ab255e1d424791
+    tag: 869eee9c1e4e6953396656844bcfafd4abc9920b

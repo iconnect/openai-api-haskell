@@ -17,7 +17,7 @@ copyright:      2021-2023 Alexander Thiemann <mail@thiemann.at>, 2024 IRIS Conne
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
-tested-with:    GHC == 9.4.7 || == 9.6.6
+tested-with:    GHC == 9.6.7 || == 9.10.3
 extra-source-files:
     README.md
 
@@ -66,5 +66,4 @@ library
     , text
     , time
     , vector
-    , wai-extra
   default-language: Haskell2010

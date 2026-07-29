@@ -38,6 +38,10 @@ module OpenAI.Resources
     ChatResponse (..),
     Seed(..),
     SystemFingerprint(..),
+    OutputMessageId(..),
+    OutputStatus(..),
+    ResponseReasoningItem(..),
+    ResponseStatus(..),
     ResponseFormat(..),
     ResponseFormatSchema(..),
     ReasoningEffort(..),
@@ -174,6 +178,24 @@ module OpenAI.Resources
     , ResponseToolFileSearch(..)
     , ResponseToolMCP(..)
     , ResponseTextFormat(..)
+    , ResponseServiceTier(..)
+    , ResponseCompactionItem(..)
+    , ResponseFunctionCallOutput(..)
+    , ResponseComputerCallOutput(..)
+    , ResponseImageGenerationCall(..)
+    , ResponseMcpCall(..)
+    , ResponseMcpListTools(..)
+    , ResponseMcpListToolsTool(..)
+    , ResponseMcpApprovalRequest(..)
+    , ResponseMcpApprovalResponse(..)
+    , ResponseLocalShellCall(..)
+    , ResponseLocalShellCallOutput(..)
+    , ResponseAdditionalTools(..)
+    , ContextManagementItem(..)
+    , PromptCacheRetention(..)
+    , ResponseCompactCreate(..)
+    , CompactedResponse(..)
+    , ResponseUsage(..)
 
     -- * Moderation
     , ModerationCreate(..)
@@ -1647,6 +1669,7 @@ data ResponseServiceTier
   = RST_auto
   | RST_default
   | RST_flex
+  | RST_priority
   deriving stock (Show, Eq, Generic, Enum, Bounded)
   deriving anyclass NFData
 
@@ -1904,6 +1927,12 @@ objectToList :: A.Value -> [A.Pair]
 objectToList (A.Object o) = KM.toList o
 objectToList _            = error "Expected object in content encoding"
 
+-- | Encode @a@ to JSON and insert a @"type"@ discriminator field.
+injectType :: ToJSON a => T.Text -> a -> A.Value
+injectType ty a = case A.toJSON a of
+  A.Object o -> A.Object $ KM.insert "type" (A.String ty) o
+  _          -> error "Expected object encoding for input item"
+
 newtype OutputMessageId = OutputMessageId {unOutputMessageId :: T.Text}
   deriving stock (Show, Eq, Generic)
   deriving newtype (ToJSON, FromJSON, ToHttpApiData)
@@ -1921,6 +1950,152 @@ data ResponseMessage = ResponseMessage
 
 $(deriveJSON (jsonOpts 2) ''ResponseMessage)
 
+-- | A compaction item returned by `POST /v1/responses/compact`, or echoed
+-- back as an input item on a subsequent request.
+data ResponseCompactionItem = ResponseCompactionItem
+  { rciId               :: Maybe T.Text  -- ^ Present on output, optional on input.
+  , rciEncryptedContent :: T.Text
+  , rciCreatedBy        :: Maybe T.Text  -- ^ Output-only.
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseCompactionItem)
+
+-- | Output of a function tool call (the model-provided result of a previously
+-- requested function call).
+data ResponseFunctionCallOutput = ResponseFunctionCallOutput
+  { rfcoId     :: Maybe T.Text
+  , rfcoCallId :: T.Text
+  , rfcoOutput :: A.Value     -- can be string or structured content
+  , rfcoStatus :: Maybe OutputStatus
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseFunctionCallOutput)
+
+-- | Output of a computer-use tool call.
+data ResponseComputerCallOutput = ResponseComputerCallOutput
+  { rcocoId     :: Maybe T.Text
+  , rcocoCallId :: T.Text
+  , rcocoOutput :: A.Value
+  , rcocoStatus :: Maybe OutputStatus
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 5) ''ResponseComputerCallOutput)
+
+-- | An image generation request made by the model.
+data ResponseImageGenerationCall = ResponseImageGenerationCall
+  { rigcId     :: T.Text
+  , rigcResult :: Maybe T.Text  -- base64-encoded image
+  , rigcStatus :: T.Text        -- in_progress | completed | generating | failed
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseImageGenerationCall)
+
+-- | An invocation of a tool on an MCP server.
+data ResponseMcpCall = ResponseMcpCall
+  { rmcId                :: T.Text
+  , rmcArguments         :: T.Text
+  , rmcName              :: T.Text
+  , rmcServerLabel       :: T.Text
+  , rmcApprovalRequestId :: Maybe T.Text
+  , rmcError             :: Maybe T.Text
+  , rmcOutput            :: Maybe T.Text
+  , rmcStatus            :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseMcpCall)
+
+-- | A tool advertised by an MCP server.
+data ResponseMcpListToolsTool = ResponseMcpListToolsTool
+  { rmlttInputSchema :: A.Value
+  , rmlttName        :: T.Text
+  , rmlttAnnotations :: Maybe A.Value
+  , rmlttDescription :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 5) ''ResponseMcpListToolsTool)
+
+-- | A list of tools available on an MCP server.
+data ResponseMcpListTools = ResponseMcpListTools
+  { rmltId          :: T.Text
+  , rmltServerLabel :: T.Text
+  , rmltTools       :: [ResponseMcpListToolsTool]
+  , rmltError       :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseMcpListTools)
+
+-- | A request for human approval of an MCP tool invocation.
+data ResponseMcpApprovalRequest = ResponseMcpApprovalRequest
+  { rmarId          :: T.Text
+  , rmarArguments   :: T.Text
+  , rmarName        :: T.Text
+  , rmarServerLabel :: T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseMcpApprovalRequest)
+
+-- | A response to an MCP approval request.
+data ResponseMcpApprovalResponse = ResponseMcpApprovalResponse
+  { rmaresId                :: T.Text
+  , rmaresApprovalRequestId :: T.Text
+  , rmaresApprove           :: Bool
+  , rmaresReason            :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 6) ''ResponseMcpApprovalResponse)
+
+-- | A tool call to run a command on the local shell.
+data ResponseLocalShellCall = ResponseLocalShellCall
+  { rlscId      :: T.Text
+  , rlscCallId  :: T.Text
+  , rlscAction  :: A.Value
+  , rlscStatus  :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''ResponseLocalShellCall)
+
+-- | The output of a local-shell tool call.
+data ResponseLocalShellCallOutput = ResponseLocalShellCallOutput
+  { rlscoId     :: T.Text
+  , rlscoOutput :: T.Text
+  , rlscoStatus :: Maybe T.Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 5) ''ResponseLocalShellCallOutput)
+
+-- | Additional tools surfaced as an output item.
+data ResponseAdditionalTools = ResponseAdditionalTools
+  { ratId    :: T.Text
+  , ratRole  :: T.Text
+  , ratTools :: [A.Value]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseAdditionalTools)
+
 data ResponseOutput
   = RO_Message ResponseMessage
   | RO_FileSearchCall ResponseFileSearchCall
@@ -1928,6 +2103,20 @@ data ResponseOutput
   | RO_WebSearchCall ResponseWebSearchCall
   | RO_ComputerCall ResponseComputerCall
   | RO_Reasoning ResponseReasoningItem
+  | RO_Compaction ResponseCompactionItem
+  | RO_FunctionCallOutput ResponseFunctionCallOutput
+  | RO_ComputerCallOutput ResponseComputerCallOutput
+  | RO_ImageGenerationCall ResponseImageGenerationCall
+  | RO_McpCall ResponseMcpCall
+  | RO_McpListTools ResponseMcpListTools
+  | RO_McpApprovalRequest ResponseMcpApprovalRequest
+  | RO_McpApprovalResponse ResponseMcpApprovalResponse
+  | RO_LocalShellCall ResponseLocalShellCall
+  | RO_LocalShellCallOutput ResponseLocalShellCallOutput
+  | RO_AdditionalTools ResponseAdditionalTools
+    -- | Catch-all for output item types we haven't modelled yet. Carries
+    -- the raw JSON value so encoding round-trips exactly.
+  | RO_Unknown A.Value
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
@@ -1935,32 +2124,46 @@ instance FromJSON ResponseOutput where
   parseJSON = A.withObject "ResponseOutput" $ \o -> do
     typ <- o A..:? "type" :: A.Parser (Maybe T.Text)
     case typ of
-      Just "message"            -> RO_Message <$> A.parseJSON (A.Object o)
-      Just "file_search_call"   -> RO_FileSearchCall <$> A.parseJSON (A.Object o)
-      Just "function_call"      -> RO_FunctionCall <$> A.parseJSON (A.Object o)
-      Just "web_search_call"    -> RO_WebSearchCall <$> A.parseJSON (A.Object o)
-      Just "computer_call"      -> RO_ComputerCall <$> A.parseJSON (A.Object o)
-      Just "reasoning"          -> RO_Reasoning <$> A.parseJSON (A.Object o)
-      _                         -> RO_Message <$> A.parseJSON (A.Object o) -- assume message
+      Just "message"               -> RO_Message              <$> A.parseJSON (A.Object o)
+      Just "file_search_call"      -> RO_FileSearchCall       <$> A.parseJSON (A.Object o)
+      Just "function_call"         -> RO_FunctionCall         <$> A.parseJSON (A.Object o)
+      Just "function_call_output"  -> RO_FunctionCallOutput   <$> A.parseJSON (A.Object o)
+      Just "web_search_call"       -> RO_WebSearchCall        <$> A.parseJSON (A.Object o)
+      Just "computer_call"         -> RO_ComputerCall         <$> A.parseJSON (A.Object o)
+      Just "computer_call_output"  -> RO_ComputerCallOutput   <$> A.parseJSON (A.Object o)
+      Just "reasoning"             -> RO_Reasoning            <$> A.parseJSON (A.Object o)
+      Just "compaction"            -> RO_Compaction           <$> A.parseJSON (A.Object o)
+      Just "image_generation_call" -> RO_ImageGenerationCall  <$> A.parseJSON (A.Object o)
+      Just "mcp_call"              -> RO_McpCall              <$> A.parseJSON (A.Object o)
+      Just "mcp_list_tools"        -> RO_McpListTools         <$> A.parseJSON (A.Object o)
+      Just "mcp_approval_request"  -> RO_McpApprovalRequest   <$> A.parseJSON (A.Object o)
+      Just "mcp_approval_response" -> RO_McpApprovalResponse  <$> A.parseJSON (A.Object o)
+      Just "local_shell_call"      -> RO_LocalShellCall       <$> A.parseJSON (A.Object o)
+      Just "local_shell_call_output" -> RO_LocalShellCallOutput <$> A.parseJSON (A.Object o)
+      Just "additional_tools"      -> RO_AdditionalTools      <$> A.parseJSON (A.Object o)
+      Nothing                      -> RO_Message              <$> A.parseJSON (A.Object o) -- assume message
+      Just _                       -> pure (RO_Unknown (A.Object o))
 
 instance ToJSON ResponseOutput where
   toJSON = \case
-    RO_Message x          -> A.toJSON x
-    RO_FileSearchCall x   -> A.Object $ withObj (A.object ["type" A..= ("file_search_call" :: T.Text)]) (`mappend` toObject x)
-    RO_FunctionCall x     -> A.Object $ withObj (A.object ["type" A..= ("function_call" :: T.Text)])    (`mappend` toObject x)
-    RO_WebSearchCall x    -> A.Object $ withObj (A.object ["type" A..= ("web_search_call" :: T.Text)])  (`mappend` toObject x)
-    RO_ComputerCall x     -> A.Object $ withObj (A.object ["type" A..= ("computer_call" :: T.Text)])    (`mappend` toObject x)
-    RO_Reasoning x        -> A.Object $ withObj (A.object ["type" A..= ("reasoning" :: T.Text)])        (`mappend`toObject x)
-
-withObj :: A.Value -> (A.Object -> a) -> a
-withObj v f = case v of
-  A.Object o -> f o
-  other      -> error $ "Expected object encoding, got: " <> show other
-
-toObject :: ToJSON a => a -> KM.KeyMap A.Value
-toObject v = case A.toJSON v of
-  A.Object o -> o
-  other      -> error $ "Expected object encoding, got: " <> show other
+    RO_Message x             -> A.toJSON x
+    RO_FileSearchCall x      -> injectType "file_search_call" x
+    RO_FunctionCall x        -> injectType "function_call" x
+    RO_FunctionCallOutput x  -> injectType "function_call_output" x
+    RO_WebSearchCall x       -> injectType "web_search_call" x
+    RO_ComputerCall x        -> injectType "computer_call" x
+    RO_ComputerCallOutput x  -> injectType "computer_call_output" x
+    RO_Reasoning x           -> injectType "reasoning" x
+    RO_Compaction x          -> injectType "compaction" x
+    RO_ImageGenerationCall x -> injectType "image_generation_call" x
+    RO_McpCall x             -> injectType "mcp_call" x
+    RO_McpListTools x        -> injectType "mcp_list_tools" x
+    RO_McpApprovalRequest x  -> injectType "mcp_approval_request" x
+    RO_McpApprovalResponse x -> injectType "mcp_approval_response" x
+    RO_LocalShellCall x      -> injectType "local_shell_call" x
+    RO_LocalShellCallOutput x -> injectType "local_shell_call_output" x
+    RO_AdditionalTools x     -> injectType "additional_tools" x
+    RO_Unknown v             -> v
 
 data ResponseError = ResponseError
   { reCode    :: T.Text
@@ -1990,34 +2193,66 @@ data ResponseCreateInputItem
   | RII_WebSearchCall ResponseWebSearchCall
   | RII_ComputerCall ResponseComputerCall
   | RII_Reasoning ResponseReasoningItem
+  | RII_Compaction ResponseCompactionItem
+  | RII_FunctionCallOutput ResponseFunctionCallOutput
+  | RII_ComputerCallOutput ResponseComputerCallOutput
+  | RII_ImageGenerationCall ResponseImageGenerationCall
+  | RII_McpCall ResponseMcpCall
+  | RII_McpListTools ResponseMcpListTools
+  | RII_McpApprovalRequest ResponseMcpApprovalRequest
+  | RII_McpApprovalResponse ResponseMcpApprovalResponse
+  | RII_LocalShellCall ResponseLocalShellCall
+  | RII_LocalShellCallOutput ResponseLocalShellCallOutput
+  | RII_AdditionalTools ResponseAdditionalTools
+    -- | Catch-all for input item types we haven't modelled yet. Carries
+    -- the raw JSON value so encoding round-trips exactly.
+  | RII_Unknown A.Value
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
 instance FromJSON ResponseCreateInputItem where
   parseJSON = A.withObject "ResponseCreateInputItem" $ \o -> do
-    typ <- o A..:? "type" A..!= "message"  -- default to message
+    typ <- (o A..:? "type" A..!= "message") :: A.Parser T.Text
     case typ of
-      "message"          -> RII_Message <$> A.parseJSON (A.Object o)
-      "file_search_call" -> RII_FileSearchCall <$> A.parseJSON (A.Object o)
-      "function_call"    -> RII_FunctionCall <$> A.parseJSON (A.Object o)
-      "web_search_call"  -> RII_WebSearchCall <$> A.parseJSON (A.Object o)
-      "computer_call"    -> RII_ComputerCall <$> A.parseJSON (A.Object o)
-      "reasoning"        -> RII_Reasoning <$> A.parseJSON (A.Object o)
-      unknown            -> fail ("Unknown input item type: " <> T.unpack unknown)
+      "message"                 -> RII_Message              <$> A.parseJSON (A.Object o)
+      "file_search_call"        -> RII_FileSearchCall       <$> A.parseJSON (A.Object o)
+      "function_call"           -> RII_FunctionCall         <$> A.parseJSON (A.Object o)
+      "function_call_output"    -> RII_FunctionCallOutput   <$> A.parseJSON (A.Object o)
+      "web_search_call"         -> RII_WebSearchCall        <$> A.parseJSON (A.Object o)
+      "computer_call"           -> RII_ComputerCall         <$> A.parseJSON (A.Object o)
+      "computer_call_output"    -> RII_ComputerCallOutput   <$> A.parseJSON (A.Object o)
+      "reasoning"               -> RII_Reasoning            <$> A.parseJSON (A.Object o)
+      "compaction"              -> RII_Compaction           <$> A.parseJSON (A.Object o)
+      "image_generation_call"   -> RII_ImageGenerationCall  <$> A.parseJSON (A.Object o)
+      "mcp_call"                -> RII_McpCall              <$> A.parseJSON (A.Object o)
+      "mcp_list_tools"          -> RII_McpListTools         <$> A.parseJSON (A.Object o)
+      "mcp_approval_request"    -> RII_McpApprovalRequest   <$> A.parseJSON (A.Object o)
+      "mcp_approval_response"   -> RII_McpApprovalResponse  <$> A.parseJSON (A.Object o)
+      "local_shell_call"        -> RII_LocalShellCall       <$> A.parseJSON (A.Object o)
+      "local_shell_call_output" -> RII_LocalShellCallOutput <$> A.parseJSON (A.Object o)
+      "additional_tools"        -> RII_AdditionalTools      <$> A.parseJSON (A.Object o)
+      _                         -> pure (RII_Unknown (A.Object o))
 
 instance ToJSON ResponseCreateInputItem where
   toJSON = \case
-    RII_Message x          -> A.toJSON x
-    RII_FileSearchCall x   -> injectType "file_search_call" x
-    RII_FunctionCall x     -> injectType "function_call" x
-    RII_WebSearchCall x    -> injectType "web_search_call" x
-    RII_ComputerCall x     -> injectType "computer_call" x
-    RII_Reasoning x        -> injectType "reasoning" x
-
-injectType :: ToJSON a => T.Text -> a -> A.Value
-injectType ty a = case A.toJSON a of
-  A.Object o -> A.Object $ KM.insert "type" (A.String ty) o
-  _          -> error "Expected object encoding for input item"
+    RII_Message x             -> A.toJSON x
+    RII_FileSearchCall x      -> injectType "file_search_call" x
+    RII_FunctionCall x        -> injectType "function_call" x
+    RII_FunctionCallOutput x  -> injectType "function_call_output" x
+    RII_WebSearchCall x       -> injectType "web_search_call" x
+    RII_ComputerCall x        -> injectType "computer_call" x
+    RII_ComputerCallOutput x  -> injectType "computer_call_output" x
+    RII_Reasoning x           -> injectType "reasoning" x
+    RII_Compaction x          -> injectType "compaction" x
+    RII_ImageGenerationCall x -> injectType "image_generation_call" x
+    RII_McpCall x             -> injectType "mcp_call" x
+    RII_McpListTools x        -> injectType "mcp_list_tools" x
+    RII_McpApprovalRequest x  -> injectType "mcp_approval_request" x
+    RII_McpApprovalResponse x -> injectType "mcp_approval_response" x
+    RII_LocalShellCall x      -> injectType "local_shell_call" x
+    RII_LocalShellCallOutput x -> injectType "local_shell_call_output" x
+    RII_AdditionalTools x     -> injectType "additional_tools" x
+    RII_Unknown v             -> v
 
 data ResponseInput
   = RI_Text T.Text
@@ -2112,6 +2347,26 @@ instance ToJSON ResponseTool where
     RT_LocalShell ->
       A.object ["type" A..= A.String "local_shell"]
 
+-- | Context management entry for a `POST /v1/responses` request.
+-- Currently only the @compaction@ strategy is supported.
+data ContextManagementItem
+  = CMI_Compaction { cmiCompactThreshold :: Maybe Int }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON ContextManagementItem where
+  toJSON = \case
+    CMI_Compaction mt ->
+      A.object $ ("type" A..= A.String "compaction")
+               : maybe [] (\t -> ["compact_threshold" A..= t]) mt
+
+instance FromJSON ContextManagementItem where
+  parseJSON = A.withObject "ContextManagementItem" $ \o -> do
+    ty <- o A..: "type" :: A.Parser T.Text
+    case ty of
+      "compaction" -> CMI_Compaction <$> o A..:? "compact_threshold"
+      other        -> fail ("Unknown context management type: " <> T.unpack other)
+
 -- | Request body for POST /v1/responses
 data ResponseCreate = ResponseCreate
   { recrModel              :: ModelId
@@ -2133,11 +2388,56 @@ data ResponseCreate = ResponseCreate
   , recrText               :: Maybe ResponseText
   , recrToolChoice         :: Maybe ResponseToolChoice
   , recrTools              :: Maybe [ResponseTool]
+  , recrContextManagement  :: Maybe [ContextManagementItem]
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass NFData
 
 $(deriveJSON (jsonOpts 4) ''ResponseCreate)
+
+-- | Prompt cache retention strategy for `POST /v1/responses/compact`.
+data PromptCacheRetention = PCR_InMemory | PCR_24h
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+instance ToJSON PromptCacheRetention where
+  toJSON PCR_InMemory = A.String "in_memory"
+  toJSON PCR_24h      = A.String "24h"
+
+instance FromJSON PromptCacheRetention where
+  parseJSON = A.withText "PromptCacheRetention" $ \case
+    "in_memory" -> pure PCR_InMemory
+    "24h"       -> pure PCR_24h
+    other       -> fail ("Unknown PromptCacheRetention: " <> T.unpack other)
+
+-- | Request body for @POST /v1/responses/compact@.
+data ResponseCompactCreate = ResponseCompactCreate
+  { rccModel                :: ModelId
+  , rccInput                :: Maybe ResponseInput
+  , rccInstructions         :: Maybe T.Text
+  , rccPreviousResponseId   :: Maybe ResponseId
+  , rccPromptCacheKey       :: Maybe T.Text
+  , rccPromptCacheRetention :: Maybe PromptCacheRetention
+  , rccServiceTier          :: Maybe ResponseServiceTier
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 3) ''ResponseCompactCreate)
+
+-- | Response from @POST /v1/responses/compact@. The @object@ field is
+-- always @"response.compaction"@.
+data CompactedResponse = CompactedResponse
+  { cmprId        :: T.Text
+  , cmprCreatedAt :: Int
+  , cmprObject    :: T.Text
+  , cmprOutput    :: [ResponseOutput]
+  , cmprUsage     :: ResponseUsage
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass NFData
+
+$(deriveJSON (jsonOpts 4) ''CompactedResponse)
 
 -- | Response from GET /v1/responses/{response_id}/input_items
 data ResponseInputItem = ResponseInputItem

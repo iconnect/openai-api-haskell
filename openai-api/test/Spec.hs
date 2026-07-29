@@ -1,4 +1,5 @@
 import ApiSpec
+import CompactionSpec
 import Control.Monad
 import HelperSpec
 import System.Environment
@@ -14,3 +15,4 @@ main = do
     do
       unless runningInCI apiSpec
       helperSpec
+      compactionSpec
