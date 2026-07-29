@@ -195,6 +195,7 @@ module OpenAI.Resources
     , PromptCacheRetention(..)
     , ResponseCompactCreate(..)
     , CompactedResponse(..)
+    , ResponseUsage(..)
 
     -- * Moderation
     , ModerationCreate(..)
